@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Mon Abonnement — Prime Video</title>
+    <link rel="stylesheet" th:href="@{/css/main.css}"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+    <style>
+        .subscription-dashboard {
+            max-width: 800px;
+            margin: 50px auto;
+        }
+
+        .sub-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 40px;
+            position: relative;
+        }
+
+        .sub-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 30px;
+            padding-bottom: 30px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .sub-title h2 {
+            margin: 0;
+            font-size: 1.8rem;
+            color: #fff;
+        }
+
+        .sub-status {
+            padding: 6px 15px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .status-active { background: rgba(46, 213, 115, 0.2); color: #2ed573; }
+        .status-cancelled { background: rgba(255, 71, 87, 0.2); color: #ff4757; }
+
+        .sub-details {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .detail-item label {
+            display: block;
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 0.9rem;
+            margin-bottom: 5px;
+        }
+
+        .detail-item span {
+            font-size: 1.1rem;
+            color: #fff;
+            font-weight: 600;
+        }
+
+        .sub-actions {
+            display: flex;
+            gap: 20px;
+        }
+
+        .btn-cancel {
+            background: rgba(255, 71, 87, 0.1);
+            color: #ff4757;
+            border: 1px solid #ff4757;
+            padding: 12px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .btn-cancel:hover {
+            background: #ff4757;
+            color: white;
+        }
+
+        .no-sub-box {
+            text-align: center;
+            padding: 60px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 20px;
+            border: 1px dashed rgba(255, 255, 255, 0.1);
+        }
+
+        .no-sub-box i {
+            font-size: 4rem;
+            color: rgba(255, 255, 255, 0.1);
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body class="cosmic-theme">
+<div th:replace="~{layout :: navbar}"></div>
+
+<main class="main-content">
+    <div class="page-container">
+        <div class="subscription-dashboard">
+            <h1 class="page-title">Gestion de l'abonnement</h1>
+
+            <!-- Cas : Pas d'abonnement actif -->
+            <div th:if="${subscription == null}" class="no-sub-box">
+                <i class="fas fa-crown"></i>
+                <h2>Vous n'êtes pas encore abonné</h2>
+                <p>Abonnez-vous pour profiter de tout le catalogue Prime Video sans publicité.</p>
+                <a th:href="@{/subscriptions/plans}" class="btn-primary" style="margin-top: 20px; display: inline-block;">
+                    Voir les offres
+                </a>
+            </div>
+
+            <!-- Cas : Abonnement actif -->
+            <div th:if="${subscription != null}" class="sub-card">
+                <div class="sub-header">
+                    <div class="sub-title">
+                        <h2 th:text="${subscription.plan.name}">Prime Video Mensuel</h2>
+                        <p class="plan-period" th:text="${subscription.plan.billingPeriod == 'MONTHLY' ? 'Abonnement mensuel' : 'Abonnement annuel'}">Mensuel</p>
+                    </div>
+                    <span th:class="'sub-status status-' + ${#strings.toLowerCase(subscription.status)}" 
+                          th:text="${subscription.status}">ACTIVE</span>
+                </div>
+
+                <div class="sub-details">
+                    <div class="detail-item">
+                        <label>Début de l'abonnement</label>
+                        <span th:text="${#temporals.format(subscription.startedAt, 'dd MMMM yyyy')}">01 Janvier 2024</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>Prochain renouvellement</label>
+                        <span th:text="${#temporals.format(subscription.currentPeriodEnd, 'dd MMMM yyyy')}">01 Février 2024</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>Prix</label>
+                        <span th:text="${#numbers.formatDecimal(subscription.plan.price, 0, 'WHITESPACE', 0, 'POINT')} + ' ' + ${subscription.plan.currency}">45 000 CFA</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>Renouvellement automatique</label>
+                        <span th:text="${subscription.isAutoRenew ? 'Activé' : 'Désactivé'}">Activé</span>
+                    </div>
+                </div>
+
+                <div class="sub-actions" th:if="${subscription.status == 'ACTIVE'}">
+                    <button type="button" class="btn-cancel" onclick="cancelSubscription()">Résilier l'abonnement</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<script>
+    async function cancelSubscription() {
+        if (!confirm("Êtes-vous sûr de vouloir résilier votre abonnement Prime Video ? Cette action prendra effet immédiatement.")) {
+            return;
+        }
+        
+        const csrfToken = document.querySelector('meta[name="_csrf"]')?.content;
+        const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.content;
+        
+        const headers = {
+            'Content-Type': 'application/json'
+        };
+        if (csrfToken && csrfHeader) {
+            headers[csrfHeader] = csrfToken;
+        }
+        
+        try {
+            const response = await fetch('/api/subscriptions/current', {
+                method: 'DELETE',
+                headers: headers
+            });
+            if (response.status === 204 || response.ok) {
+                alert("Votre abonnement a été résilié avec succès.");
+                window.location.reload();
+            } else {
+                alert("Une erreur est survenue lors de la résiliation de l'abonnement.");
+            }
+        } catch (error) {
+            console.error("Erreur de résiliation:", error);
+            alert("Erreur lors de la connexion au serveur.");
+        }
+    }
+</script>
+
+<div th:replace="~{layout :: footer}"></div>
+</body>
+</html>

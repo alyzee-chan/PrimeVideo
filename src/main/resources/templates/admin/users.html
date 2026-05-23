@@ -1,0 +1,162 @@
+<<<<<<< HEAD
+=======
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Utilisateurs - Admin Prime Video</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #00A8E1;
+            --accent-gold: #f5c518;
+            --bg: #05070a;
+            --sidebar-bg: #0a0d14;
+            --card-bg: rgba(255, 255, 255, 0.03);
+            --border: rgba(255, 255, 255, 0.08);
+            --text-main: #ffffff;
+            --text-muted: #718096;
+        }
+        body {
+            background: var(--bg);
+            color: var(--text-main);
+            font-family: 'Outfit', sans-serif;
+            margin: 0;
+            display: flex;
+        }
+        .sidebar {
+            width: 280px;
+            height: 100vh;
+            background: var(--sidebar-bg);
+            border-right: 1px solid var(--border);
+            padding: 40px 0;
+            position: fixed;
+            box-shadow: 10px 0 30px rgba(0,0,0,0.5);
+        }
+        .logo { padding: 0 40px; margin-bottom: 60px; font-size: 1.8rem; font-weight: 900; }
+        .logo span { color: var(--primary); }
+        .nav-item {
+            padding: 18px 40px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            color: var(--text-muted);
+            text-decoration: none;
+            transition: all 0.3s;
+            font-weight: 600;
+        }
+        .nav-item:hover, .nav-item.active {
+            color: white;
+            background: linear-gradient(90deg, rgba(0, 168, 225, 0.1), transparent);
+            border-left: 5px solid var(--primary);
+        }
+        .main-content {
+            margin-left: 280px;
+            padding: 60px;
+            width: calc(100% - 280px);
+        }
+        .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; }
+        .user-table {
+            width: 100%;
+            background: var(--card-bg);
+            border-radius: 20px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+            backdrop-filter: blur(20px);
+        }
+        th, td { padding: 20px; text-align: left; border-bottom: 1px solid var(--border); }
+        th { background: rgba(255,255,255,0.02); color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; }
+        .user-info { display: flex; align-items: center; gap: 12px; }
+        .user-avatar { width: 40px; height: 40px; border-radius: 50%; border: 2px solid var(--border); }
+        .status-badge { padding: 5px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 800; }
+        .status-active { background: rgba(0, 255, 204, 0.1); color: #00ffcc; border: 1px solid rgba(0, 255, 204, 0.2); }
+        .status-premium { background: rgba(245, 197, 24, 0.1); color: #f5c518; border: 1px solid rgba(245, 197, 24, 0.2); }
+        .btn-action { color: var(--text-muted); transition: color 0.2s; cursor: pointer; background: none; border: none; }
+        .btn-action:hover { color: white; }
+
+        /* Responsiveness */
+        @media (max-width: 1024px) {
+            .sidebar { width: 80px; }
+            .sidebar .logo, .sidebar span, .sidebar .nav-item span { display: none; }
+            .sidebar .nav-item { padding: 20px; justify-content: center; }
+            .main-content { margin-left: 80px; width: calc(100% - 80px); padding: 30px; }
+        }
+
+        @media (max-width: 768px) {
+            .desktop-only { display: none; }
+            .page-header h1 { font-size: 1.8rem !important; }
+            th, td { padding: 12px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="logo">Prime<span>Admin</span></div>
+        <nav>
+            <a th:href="@{/admin/dashboard}" class="nav-item"><i class="fas fa-chart-line"></i> <span>Dashboard</span></a>
+            <a th:href="@{/admin/catalog}" class="nav-item"><i class="fas fa-clapperboard"></i> <span>Catalogue</span></a>
+            <a th:href="@{/admin/users}" class="nav-item active"><i class="fas fa-users"></i> <span>Utilisateurs</span></a>
+            <a th:href="@{/admin/marketing}" class="nav-item"><i class="fas fa-bullhorn"></i> <span>Marketing</span></a>
+            <a href="/" class="nav-item" style="margin-top: 50px; opacity: 0.5;"><i class="fas fa-arrow-left"></i> <span>Quitter Admin</span></a>
+        </nav>
+    </div>
+
+    <div class="main-content">
+        <div class="page-header">
+            <div>
+                <h1 style="margin: 0; font-size: 2.5rem; font-weight: 900;">Gestion des Utilisateurs</h1>
+                <p style="color: var(--text-muted); margin-top: 8px;">Supervisez vos abonnés et leurs accès au serveur.</p>
+            </div>
+            <div style="display: flex; gap: 15px;">
+                <a th:href="@{/admin/users/export}" class="btn-action" style="padding: 10px 20px; border: 1px solid var(--border); border-radius: 10px; color: white; text-decoration: none; display: flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-file-csv"></i> Exporter CSV
+                </a>
+            </div>
+        </div>
+
+        <div class="user-table">
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr>
+                        <th>Utilisateur</th>
+                        <th class="desktop-only">Email</th>
+                        <th>Rôle</th>
+                        <th class="desktop-only">Abonnement</th>
+                        <th class="desktop-only">Inscription</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="user : ${users}">
+                        <td>
+                            <div class="user-info">
+                                <img th:src="${user.avatarUrl != null ? user.avatarUrl : 'https://api.dicebear.com/7.x/bottts/svg?seed=' + user.fullName}" class="user-avatar" alt="Avatar">
+                                <span th:text="${user.fullName}" style="font-weight: 700;">Nom</span>
+                            </div>
+                        </td>
+                        <td class="desktop-only" th:text="${user.email}" style="color: var(--text-muted);">email@example.com</td>
+                        <td>
+                            <span th:text="${user.role}" class="status-badge" style="background: rgba(255,255,255,0.05);">ROLE</span>
+                        </td>
+                        <td class="desktop-only">
+                            <span class="status-badge status-premium" th:if="${user.isPrime}">PRIME</span>
+                            <span class="status-badge status-active" th:unless="${user.isPrime}">FREE</span>
+                        </td>
+                        <td class="desktop-only" th:text="${#temporals.format(user.createdAt, 'dd MMM yyyy')}" style="color: var(--text-muted);">Date</td>
+                        <td>
+                            <div style="display: flex; gap: 10px;">
+                                <button class="btn-action" title="Éditer"><i class="fas fa-pen-to-square"></i></button>
+                                <button class="btn-action" title="Suspendre" style="color: #ff4d4d;" th:if="${user.role.name() != 'ADMIN'}"><i class="fas fa-user-slash"></i></button>
+                                <form th:if="${user.isPrime && user.role.name() != 'ADMIN'}" th:action="@{'/admin/users/end-subscription/' + ${user.id}}" method="post" onsubmit="return confirm('Mettre fin à cet abonnement (Passera en mode gratuit) ?');" style="display:inline;">
+                                    <button type="submit" class="btn-action" title="Mettre fin à l'abonnement" style="color: #f5c518;"><i class="fas fa-ban"></i></button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+</html>
+>>>>>>> f85e8d9 (Projet PrimeVideo complet)

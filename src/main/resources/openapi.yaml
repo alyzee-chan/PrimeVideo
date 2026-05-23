@@ -1,0 +1,3917 @@
+openapi: 3.0.3
+info:
+  title: Amazon Prime Video API – Spécification OpenAPI 3.0
+  description: |
+    Spécification complète simulant l'API d'Amazon Prime Video.
+
+    ## Domaines couverts
+    - **Auth** — Connexion, tokens JWT, 2FA
+    - **Profils** — Gestion multi-profils (comme Netflix)
+    - **Catalogue** — Films, séries, épisodes, documentaires
+    - **Recherche** — Recherche textuelle, par genre, par acteur
+    - **🔍 Recherche par image (IA)** — Identifier un film/acteur depuis une photo
+    - **Lecteur** — Lecture, reprise, qualité vidéo, sous-titres
+    - **Watchlist** — Liste à regarder plus tard
+    - **Historique** — Contenus vus et reprises automatiques
+    - **Évaluations & Avis** — Notes et commentaires
+    - **Téléchargements** — Visionnage hors ligne
+    - **Abonnement** — Prime Video, chaînes, add-ons
+    - **Paiement** — Transactions, factures
+    - **Recommandations** — Personnalisées, tendances, similaires
+    - **Notifications** — Nouvelles sorties, rappels
+    - **Contrôle parental** — Restrictions par profil
+    - **📺 Publicités IA** — Génération automatique de bandes-annonces et spots publicitaires par IA
+    - **Live & Events** — Streaming en direct, sport, événements
+    - **Langues & Accessibilité** — Sous-titres, audiodescription, multi-langue
+
+    ## Authentification
+    Utiliser `POST /auth/login` pour obtenir un `accessToken` JWT (durée 1h).
+    À inclure dans toutes les requêtes protégées : `Authorization: Bearer {accessToken}`
+
+    ## Versioning
+    L'URL contient la version majeure (`/v1/`). En cas d'évolution non rétrocompatible,
+    une version `/v2/` sera publiée sans supprimer `/v1/`.
+  version: 4.0.0
+  contact:
+    name: Prime Video API Support
+    email: primevideo-api@amazon.com
+    url: https://developer.amazon.com/primevideo
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+servers:
+  - url: https://api.primevideo.com/v1
+    description: Production (v1)
+  - url: https://sandbox.api.primevideo.com/v1
+    description: Sandbox – tests (v1)
+tags:
+  - name: Auth
+    description: Authentification, tokens JWT et sécurité
+  - name: Users
+    description: Compte utilisateur et préférences
+  - name: Profiles
+    description: Gestion des profils (multi-utilisateurs sur un même compte)
+  - name: Catalog
+    description: Films, séries, documentaires et contenus du catalogue
+  - name: Episodes
+    description: Épisodes de séries et saisons
+  - name: Search
+    description: Recherche textuelle et par filtres dans le catalogue
+  - name: ImageSearch
+    description: 🔍 Recherche par image – identifier un film ou acteur depuis une photo (IA)
+  - name: Player
+    description: Lecteur vidéo – lecture, reprise, qualité, sous-titres
+  - name: Watchlist
+    description: Liste de contenus à regarder plus tard
+  - name: History
+    description: Historique de visionnage et reprises automatiques
+  - name: Ratings
+    description: Notes et avis sur les contenus
+  - name: Downloads
+    description: Téléchargements pour visionnage hors ligne
+  - name: Subscriptions
+    description: Abonnement Prime Video, chaînes et add-ons
+  - name: Payments
+    description: Transactions et factures
+  - name: Recommendations
+    description: Recommandations personnalisées et tendances
+  - name: Notifications
+    description: Notifications nouvelles sorties et rappels
+  - name: ParentalControl
+    description: Contrôle parental et restrictions par profil
+  - name: AdsAI
+    description: 📺 Génération de bandes-annonces et publicités par intelligence artificielle
+  - name: Live
+    description: Streaming en direct, sport et événements spéciaux
+  - name: Accessibility
+    description: Sous-titres, audiodescription et options d'accessibilité
+  - name: VoiceSearch
+    description: 🎙️ Recherche par commande vocale — dicter une requête au lieu de taper
+  - name: Anime
+    description: 🎌 Catalogue Animé & Manga — sous-genres (Shōnen, Shōjo, Seinen, Isekai...), studios, classiques, saisons
+  - name: KDrama
+    description: 🇰🇷 Catalogue K-Drama — dramas coréens avec sous-genres, réseaux de diffusion et classiques
+  - name: Webtoon
+    description: 📱 Catalogue Webtoon — adaptations audiovisuelles de manhwa/webtoon coréens
+security:
+  - BearerAuth: []
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        Token JWT obtenu via `POST /auth/login`. À inclure dans le header : `Authorization: Bearer {accessToken}`. Durée de validité : 3600 secondes (1 heure).
+  schemas:
+    Error:
+      type: object
+      description: |
+        Réponse d'erreur standard. `code` est machine-readable (constante), `message` est lisible par un humain, `details` liste les erreurs de validation champ par champ.
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          example: RESOURCE_NOT_FOUND
+        message:
+          type: string
+          example: Le contenu demandé est introuvable.
+        details:
+          type: array
+          items:
+            type: string
+    Pagination:
+      type: object
+      description: |
+        Métadonnées de pagination présentes dans toutes les réponses de liste. Permet de construire les contrôles de navigation (page suivante, précédente, totaux).
+      properties:
+        page:
+          type: integer
+          example: 1
+        pageSize:
+          type: integer
+          example: 20
+        totalItems:
+          type: integer
+          example: 1542
+        totalPages:
+          type: integer
+          example: 78
+    PaginatedMeta:
+      type: object
+      description: Wrapper contenant les métadonnées de pagination d'une réponse de liste.
+      properties:
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+    Money:
+      type: object
+      description: |
+        Montant monétaire avec devise ISO 4217 (EUR, USD...). Ne jamais utiliser un simple float pour les montants — les erreurs d'arrondi peuvent causer des problèmes comptables.
+      required:
+        - amount
+        - currency
+      properties:
+        amount:
+          type: number
+          format: double
+          example: 8.99
+        currency:
+          type: string
+          pattern: ^[A-Z]{3}$
+          example: EUR
+    Duration:
+      type: object
+      description: Durée d'un contenu vidéo exprimée en heures, minutes et secondes.
+      properties:
+        hours:
+          type: integer
+          example: 2
+        minutes:
+          type: integer
+          example: 18
+        seconds:
+          type: integer
+          example: 45
+        totalSeconds:
+          type: integer
+          description: Durée totale en secondes (utile pour les barres de progression)
+          example: 8325
+    ImageAsset:
+      type: object
+      description: Asset image (affiche, miniature, bannière) avec ses dimensions.
+      properties:
+        url:
+          type: string
+          format: uri
+          example: https://cdn.primevideo.com/images/tt0111161_poster.jpg
+        width:
+          type: integer
+          example: 400
+        height:
+          type: integer
+          example: 600
+        type:
+          type: string
+          enum:
+            - POSTER
+            - THUMBNAIL
+            - BANNER
+            - HERO
+            - LOGO
+            - BACKDROP
+    LoginRequest:
+      type: object
+      description: |
+        Identifiants de connexion. Transmis en HTTPS uniquement — jamais en HTTP non chiffré.
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          example: jean.dupont@email.com
+        password:
+          type: string
+          format: password
+          minLength: 8
+          example: MonMotDePasse123!
+        deviceId:
+          type: string
+          description: Identifiant unique de l'appareil (utilisé pour la gestion des appareils connectés)
+          example: device_abc123
+    LoginResponse:
+      type: object
+      description: |
+        Tokens retournés après une connexion réussie. Utiliser `accessToken` dans le header `Authorization: Bearer {token}`. Le `refreshToken` permet de renouveler l'`accessToken` sans re-saisir le mot de passe.
+      properties:
+        accessToken:
+          type: string
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        refreshToken:
+          type: string
+          example: dGhpcyBpcyBhIHZhbGlkIHJlZnJlc2ggdG9rZW4...
+        expiresIn:
+          type: integer
+          description: Durée de validité de l'accessToken en secondes
+          example: 3600
+        tokenType:
+          type: string
+          example: Bearer
+        requiresMFA:
+          type: boolean
+          description: Si true, un mfaToken est retourné à la place des tokens définitifs
+        mfaToken:
+          type: string
+          nullable: true
+          description: Token temporaire (5 min) à utiliser avec POST /auth/mfa/challenge si requiresMFA = true
+    RegisterRequest:
+      type: object
+      description: Données nécessaires pour créer un nouveau compte Prime Video.
+      required:
+        - email
+        - password
+        - firstName
+        - lastName
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+          minLength: 8
+        firstName:
+          type: string
+          example: Jean
+        lastName:
+          type: string
+          example: Dupont
+        phone:
+          type: string
+          example: '+33612345678'
+        birthDate:
+          type: string
+          format: date
+          example: '1990-05-15'
+        country:
+          type: string
+          example: FR
+    RefreshTokenRequest:
+      type: object
+      description: Payload pour renouveler un token d'accès expiré.
+      required:
+        - refreshToken
+      properties:
+        refreshToken:
+          type: string
+    ForgotPasswordRequest:
+      type: object
+      description: Email pour déclencher une réinitialisation de mot de passe.
+      required:
+        - email
+      properties:
+        email:
+          type: string
+          format: email
+    ResetPasswordRequest:
+      type: object
+      description: Token reçu par email + nouveau mot de passe.
+      required:
+        - token
+        - newPassword
+      properties:
+        token:
+          type: string
+        newPassword:
+          type: string
+          format: password
+          minLength: 8
+    ChangePasswordRequest:
+      type: object
+      description: Ancien et nouveau mot de passe pour changer les identifiants.
+      required:
+        - currentPassword
+        - newPassword
+      properties:
+        currentPassword:
+          type: string
+          format: password
+        newPassword:
+          type: string
+          format: password
+          minLength: 8
+    MFASetup:
+      type: object
+      description: |
+        Données de configuration 2FA : QR code à scanner avec Google Authenticator ou Authy, et codes de secours à conserver hors ligne en cas de perte du téléphone.
+      properties:
+        secret:
+          type: string
+          description: Clé secrète TOTP en Base32 (pour import manuel si QR indisponible)
+          example: JBSWY3DPEHPK3PXP
+        qrCodeUrl:
+          type: string
+          format: uri
+          description: URL du QR code à scanner
+        issuer:
+          type: string
+          example: Prime Video
+        accountName:
+          type: string
+          example: jean.dupont@email.com
+        backupCodes:
+          type: array
+          description: Codes de secours à usage unique — à sauvegarder hors ligne
+          items:
+            type: string
+          example:
+            - ABCD-1234
+            - EFGH-5678
+            - IJKL-9012
+    Device:
+      type: object
+      description: Appareil connecté au compte Prime Video.
+      properties:
+        id:
+          type: string
+          example: device_abc123
+        name:
+          type: string
+          example: TV Samsung Salon
+        type:
+          type: string
+          enum:
+            - SMART_TV
+            - PHONE
+            - TABLET
+            - COMPUTER
+            - GAME_CONSOLE
+            - FIRE_TV
+            - CHROMECAST
+            - APPLE_TV
+            - OTHER
+        os:
+          type: string
+          example: Tizen 7.0
+        lastSeenAt:
+          type: string
+          format: date-time
+        isCurrentDevice:
+          type: boolean
+        location:
+          type: string
+          example: Paris, France
+    User:
+      type: object
+      description: |
+        Compte utilisateur Prime Video complet. Un compte peut avoir plusieurs profils (membres de la famille). `isPrime` indique si l'abonnement Prime est actif.
+      properties:
+        id:
+          type: string
+          example: usr_a1b2c3d4
+        email:
+          type: string
+          format: email
+        firstName:
+          type: string
+          example: Jean
+        lastName:
+          type: string
+          example: Dupont
+        phone:
+          type: string
+        birthDate:
+          type: string
+          format: date
+        country:
+          type: string
+          example: FR
+        isPrime:
+          type: boolean
+          example: true
+        primeExpiresAt:
+          type: string
+          format: date-time
+          nullable: true
+        isVerified:
+          type: boolean
+        avatarUrl:
+          type: string
+          format: uri
+          nullable: true
+        maxProfiles:
+          type: integer
+          description: Nombre maximum de profils autorisés sur ce compte
+          example: 6
+        preferences:
+          $ref: '#/components/schemas/UserPreferences'
+        createdAt:
+          type: string
+          format: date-time
+    UserPreferences:
+      type: object
+      description: Préférences globales du compte (langue, qualité vidéo, notifications).
+      properties:
+        language:
+          type: string
+          description: Langue de l'interface (code BCP 47)
+          example: fr-FR
+        audioLanguage:
+          type: string
+          description: Langue audio préférée par défaut
+          example: fr
+        subtitleLanguage:
+          type: string
+          description: Langue des sous-titres préférée (null = désactivés)
+          nullable: true
+          example: fr
+        defaultVideoQuality:
+          type: string
+          enum:
+            - AUTO
+            - SD
+            - HD
+            - FULL_HD
+            - UHD_4K
+          example: AUTO
+        autoplay:
+          type: boolean
+          description: Lecture automatique du prochain épisode
+          default: true
+        autoplayPreviewsOnHover:
+          type: boolean
+          description: Lecture automatique des bandes-annonces au survol
+          default: true
+        dataUsageMode:
+          type: string
+          enum:
+            - LOW
+            - MEDIUM
+            - HIGH
+            - UNLIMITED
+          description: Mode d'utilisation des données (utile sur mobile)
+          example: HIGH
+        emailNotifications:
+          type: boolean
+        pushNotifications:
+          type: boolean
+    UserUpdate:
+      type: object
+      description: Champs modifiables du compte utilisateur.
+      properties:
+        firstName:
+          type: string
+        lastName:
+          type: string
+        phone:
+          type: string
+        avatarUrl:
+          type: string
+          format: uri
+        preferences:
+          $ref: '#/components/schemas/UserPreferences'
+    Profile:
+      type: object
+      description: |
+        Profil de visionnage sur un compte partagé (comme Netflix). Chaque profil a son propre historique, watchlist et recommandations. Un compte peut avoir jusqu'à 6 profils.
+      properties:
+        id:
+          type: string
+          example: prof_xyz789
+        name:
+          type: string
+          example: Jean
+        avatarUrl:
+          type: string
+          format: uri
+          example: https://cdn.primevideo.com/avatars/profile_01.png
+        isKidsProfile:
+          type: boolean
+          description: Profil enfant — restreint automatiquement aux contenus adaptés
+        ageRating:
+          type: string
+          description: Classification d'âge maximale autorisée pour ce profil
+          enum:
+            - ALL
+            - U
+            - PG
+            - PG_13
+            - R_16
+            - R_18
+          example: R_18
+        isPrimary:
+          type: boolean
+          description: Profil principal du compte (ne peut pas être supprimé)
+        pin:
+          type: string
+          nullable: true
+          description: Code PIN à 4 chiffres pour accéder à ce profil (optionnel)
+        language:
+          type: string
+          example: fr
+        createdAt:
+          type: string
+          format: date-time
+    ProfileCreate:
+      type: object
+      description: Données pour créer un nouveau profil on le compte.
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          maxLength: 50
+          example: Marie
+        isKidsProfile:
+          type: boolean
+          default: false
+        ageRating:
+          type: string
+          enum:
+            - ALL
+            - U
+            - PG
+            - PG_13
+            - R_16
+            - R_18
+          default: R_18
+        pin:
+          type: string
+          pattern: ^\d{4}$
+          nullable: true
+        language:
+          type: string
+          example: fr
+        avatarUrl:
+          type: string
+          format: uri
+    ProfileUpdate:
+      type: object
+      description: Champs modifiables d'un profil.
+      properties:
+        name:
+          type: string
+        isKidsProfile:
+          type: boolean
+        ageRating:
+          type: string
+          enum:
+            - ALL
+            - U
+            - PG
+            - PG_13
+            - R_16
+            - R_18
+        pin:
+          type: string
+          pattern: ^\d{4}$
+          nullable: true
+        language:
+          type: string
+        avatarUrl:
+          type: string
+          format: uri
+    ProfilePin:
+      type: object
+      description: Payload pour valider le PIN d'accès à un profil protégé.
+      required:
+        - pin
+      properties:
+        pin:
+          type: string
+          pattern: ^\d{4}$
+          example: '1234'
+    Genre:
+      type: object
+      description: Genre cinématographique (Action, Comédie, Drame, Science-fiction...).
+      properties:
+        id:
+          type: string
+          example: genre_action
+        name:
+          type: string
+          example: Action
+        slug:
+          type: string
+          example: action
+    Person:
+      type: object
+      description: Personne du monde du cinéma/TV (acteur, réalisateur, scénariste...).
+      properties:
+        id:
+          type: string
+          example: person_tom_hanks
+        name:
+          type: string
+          example: Tom Hanks
+        role:
+          type: string
+          description: Rôle dans le contenu (nom du personnage pour les acteurs)
+          example: Forrest Gump
+        job:
+          type: string
+          enum:
+            - ACTOR
+            - DIRECTOR
+            - WRITER
+            - PRODUCER
+            - COMPOSER
+            - CINEMATOGRAPHER
+            - OTHER
+          example: ACTOR
+        photoUrl:
+          type: string
+          format: uri
+          nullable: true
+    ContentRating:
+      type: object
+      description: Classification et avertissements de contenu selon le pays.
+      properties:
+        rating:
+          type: string
+          description: Classification officielle (ex. CSA pour la France)
+          example: '12'
+        advisories:
+          type: array
+          description: Avertissements de contenu (violence, langage, sexualité...)
+          items:
+            type: string
+          example:
+            - Violence
+            - Langage vulgaire
+        country:
+          type: string
+          example: FR
+    ContentSummary:
+      type: object
+      description: |
+        Version allégée d'un contenu vidéo, utilisée dans les listes, carousels et résultats de recherche. Pour le détail complet, utiliser `GET /catalog/{contentId}`.
+      properties:
+        id:
+          type: string
+          example: tt0111161
+        type:
+          type: string
+          enum:
+            - MOVIE
+            - SERIES
+            - DOCUMENTARY
+            - SHORT
+            - SPECIAL
+            - LIVE
+            - MINI_SERIES
+          example: MOVIE
+        title:
+          type: string
+          example: Les Évadés
+        originalTitle:
+          type: string
+          example: The Shawshank Redemption
+        year:
+          type: integer
+          example: 1994
+        duration:
+          $ref: '#/components/schemas/Duration'
+        rating:
+          type: number
+          format: double
+          description: Note moyenne des utilisateurs (0 à 5)
+          example: 4.9
+        imdbRating:
+          type: number
+          format: double
+          description: Note IMDb (0 à 10)
+          example: 9.3
+        poster:
+          $ref: '#/components/schemas/ImageAsset'
+        thumbnail:
+          $ref: '#/components/schemas/ImageAsset'
+        genres:
+          type: array
+          items:
+            $ref: '#/components/schemas/Genre'
+        isPrime:
+          type: boolean
+          description: Inclus dans l'abonnement Prime (sinon location/achat requis)
+        isNew:
+          type: boolean
+          description: Ajouté au catalogue dans les 30 derniers jours
+        isTrending:
+          type: boolean
+        contentRating:
+          type: string
+          example: '12'
+        isDownloadable:
+          type: boolean
+        hasHDR:
+          type: boolean
+        has4K:
+          type: boolean
+        hasDolbyAtmos:
+          type: boolean
+        availableUntil:
+          type: string
+          format: date
+          nullable: true
+          description: Date de fin de disponibilité (null = disponible indéfiniment)
+    Content:
+      type: object
+      description: |
+        Fiche complète d'un contenu vidéo (film, série, documentaire...). Inclut le casting complet, les saisons/épisodes pour les séries, les options audio/sous-titres disponibles et les liens de lecture.
+      allOf:
+        - $ref: '#/components/schemas/ContentSummary'
+        - type: object
+          properties:
+            synopsis:
+              type: string
+              example: Deux hommes emprisonnés à tort se lient d'amitié sur de nombreuses années...
+            tagline:
+              type: string
+              example: Fear can hold you prisoner. Hope can set you free.
+            cast:
+              type: array
+              items:
+                $ref: '#/components/schemas/Person'
+            directors:
+              type: array
+              items:
+                $ref: '#/components/schemas/Person'
+            writers:
+              type: array
+              items:
+                $ref: '#/components/schemas/Person'
+            producers:
+              type: array
+              items:
+                $ref: '#/components/schemas/Person'
+            studio:
+              type: string
+              example: Columbia Pictures
+            country:
+              type: string
+              example: US
+            languages:
+              type: array
+              description: Langues audio disponibles
+              items:
+                type: string
+              example:
+                - fr
+                - en
+                - es
+                - de
+            subtitleLanguages:
+              type: array
+              description: Langues de sous-titres disponibles
+              items:
+                type: string
+              example:
+                - fr
+                - en
+                - es
+                - de
+                - it
+                - pt
+            images:
+              type: object
+              properties:
+                poster:
+                  $ref: '#/components/schemas/ImageAsset'
+                hero:
+                  $ref: '#/components/schemas/ImageAsset'
+                banner:
+                  $ref: '#/components/schemas/ImageAsset'
+                backdrop:
+                  $ref: '#/components/schemas/ImageAsset'
+                logo:
+                  $ref: '#/components/schemas/ImageAsset'
+            trailerUrl:
+              type: string
+              format: uri
+              nullable: true
+              description: URL de la bande-annonce officielle
+            contentRatings:
+              type: array
+              items:
+                $ref: '#/components/schemas/ContentRating'
+            videoQualities:
+              type: array
+              description: Qualités vidéo disponibles pour ce contenu
+              items:
+                type: string
+                enum:
+                  - SD
+                  - HD
+                  - FULL_HD
+                  - UHD_4K
+            hasAudioDescription:
+              type: boolean
+              description: Audiodescription disponible (accessibilité malvoyants)
+            hasSignLanguage:
+              type: boolean
+              description: Langue des signes disponible
+            seasons:
+              type: array
+              description: Saisons disponibles (pour les séries uniquement)
+              items:
+                $ref: '#/components/schemas/SeasonSummary'
+            totalEpisodes:
+              type: integer
+              nullable: true
+              description: Nombre total d'épisodes (séries uniquement)
+            relatedContent:
+              type: array
+              description: Contenus similaires recommandés
+              items:
+                $ref: '#/components/schemas/ContentSummary'
+            awards:
+              type: array
+              items:
+                type: object
+                properties:
+                  name:
+                    type: string
+                    example: Oscar du Meilleur Film
+                  year:
+                    type: integer
+                    example: 1995
+                  won:
+                    type: boolean
+            pricing:
+              $ref: '#/components/schemas/ContentPricing'
+            addedAt:
+              type: string
+              format: date-time
+            updatedAt:
+              type: string
+              format: date-time
+    ContentPricing:
+      type: object
+      description: Tarification d'un contenu selon les différentes options d'accès.
+      properties:
+        isIncludedInPrime:
+          type: boolean
+          description: Inclus sans surcoût dans l'abonnement Prime
+        rentPrice:
+          $ref: '#/components/schemas/Money'
+        rentDuration:
+          type: integer
+          description: Durée de location en jours (ex. 30 jours pour regarder, 48h une fois démarré)
+          example: 30
+        buyPrice:
+          $ref: '#/components/schemas/Money'
+        buyHDPrice:
+          $ref: '#/components/schemas/Money'
+        buy4KPrice:
+          $ref: '#/components/schemas/Money'
+    ContentList:
+      type: object
+      description: Liste paginée de contenus (version allégée).
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ContentSummary'
+        meta:
+          $ref: '#/components/schemas/PaginatedMeta'
+    SeasonSummary:
+      type: object
+      description: Résumé d'une saison d'une série (pour les listes).
+      properties:
+        id:
+          type: string
+          example: season_001
+        number:
+          type: integer
+          example: 1
+        title:
+          type: string
+          nullable: true
+          example: Saison 1
+        year:
+          type: integer
+          example: 2023
+        episodeCount:
+          type: integer
+          example: 8
+        thumbnail:
+          $ref: '#/components/schemas/ImageAsset'
+    Season:
+      type: object
+      description: Saison complète avec la liste de ses épisodes.
+      allOf:
+        - $ref: '#/components/schemas/SeasonSummary'
+        - type: object
+          properties:
+            synopsis:
+              type: string
+            episodes:
+              type: array
+              items:
+                $ref: '#/components/schemas/Episode'
+    Episode:
+      type: object
+      description: |
+        Épisode d'une série avec sa durée, son synopsis et ses informations de lecture. Inclut la progression de visionnage si l'utilisateur a déjà commencé à le regarder.
+      properties:
+        id:
+          type: string
+          example: ep_s01e01
+        seasonId:
+          type: string
+        seriesId:
+          type: string
+        number:
+          type: integer
+          description: Numéro de l'épisode dans la saison
+          example: 1
+        title:
+          type: string
+          example: Pilote
+        synopsis:
+          type: string
+        duration:
+          $ref: '#/components/schemas/Duration'
+        thumbnail:
+          $ref: '#/components/schemas/ImageAsset'
+        airDate:
+          type: string
+          format: date
+        directors:
+          type: array
+          items:
+            $ref: '#/components/schemas/Person'
+        isAvailable:
+          type: boolean
+        watchProgress:
+          $ref: '#/components/schemas/WatchProgress'
+          nullable: true
+    SearchResult:
+      type: object
+      description: Résultats d'une recherche dans le catalogue Prime Video.
+      properties:
+        query:
+          type: string
+          example: Breaking Bad
+        totalResults:
+          type: integer
+          example: 42
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ContentSummary'
+        people:
+          type: array
+          description: Personnes (acteurs, réalisateurs) correspondant à la recherche
+          items:
+            $ref: '#/components/schemas/Person'
+        meta:
+          $ref: '#/components/schemas/PaginatedMeta'
+    SearchSuggestion:
+      type: object
+      description: Suggestions d'autocomplétion pour la barre de recherche.
+      properties:
+        suggestions:
+          type: array
+          items:
+            type: object
+            properties:
+              text:
+                type: string
+                example: Breaking Bad
+              type:
+                type: string
+                enum:
+                  - CONTENT
+                  - PERSON
+                  - GENRE
+                  - COLLECTION
+              imageUrl:
+                type: string
+                format: uri
+                nullable: true
+    ImageSearchResult:
+      type: object
+      description: |
+        Résultats de la recherche par image IA. L'algorithme analyse la photo uploadée pour identifier un film, une scène, un acteur ou un personnage, puis retourne les contenus correspondants dans le catalogue.
+      properties:
+        confidence:
+          type: number
+          format: double
+          description: Score de confiance de la reconnaissance (0 à 1)
+          example: 0.94
+        recognizedType:
+          type: string
+          enum:
+            - CONTENT
+            - PERSON
+            - SCENE
+            - CHARACTER
+            - UNKNOWN
+          description: Type d'élément reconnu dans l'image
+          example: PERSON
+        recognizedLabel:
+          type: string
+          description: Élément reconnu (nom du film, de l'acteur...)
+          example: Bryan Cranston
+        matchedContent:
+          type: array
+          description: Contenus du catalogue correspondant à l'image
+          items:
+            $ref: '#/components/schemas/ContentSummary'
+        matchedPeople:
+          type: array
+          description: Personnes reconnues dans l'image
+          items:
+            $ref: '#/components/schemas/Person'
+        alternativeMatches:
+          type: array
+          description: Autres correspondances possibles avec un score de confiance plus faible
+          items:
+            type: object
+            properties:
+              label:
+                type: string
+              confidence:
+                type: number
+              content:
+                $ref: '#/components/schemas/ContentSummary'
+        processingTimeMs:
+          type: integer
+          description: Temps de traitement en millisecondes
+          example: 342
+    ImageSearchJob:
+      type: object
+      description: |
+        Job de recherche par image. La reconnaissance est asynchrone pour les images complexes nécessitant une analyse approfondie.
+      properties:
+        id:
+          type: string
+          example: isj_abc123
+        status:
+          type: string
+          enum:
+            - QUEUED
+            - PROCESSING
+            - COMPLETED
+            - FAILED
+        imageUrl:
+          type: string
+          format: uri
+          description: URL temporaire de l'image uploadée (expire après 1h)
+        result:
+          $ref: '#/components/schemas/ImageSearchResult'
+          nullable: true
+        error:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+    PlaybackSession:
+      type: object
+      description: |
+        Session de lecture active pour un contenu vidéo. Contient l'URL de streaming, les pistes audio/sous-titres disponibles et la configuration DRM pour la protection des droits.
+      properties:
+        sessionId:
+          type: string
+          example: sess_play_xyz
+        contentId:
+          type: string
+        episodeId:
+          type: string
+          nullable: true
+        streamUrl:
+          type: string
+          format: uri
+          description: URL de streaming (HLS ou DASH selon l'appareil)
+        drmToken:
+          type: string
+          description: Token DRM (Widevine/FairPlay) pour la protection des droits
+        audioTracks:
+          type: array
+          items:
+            $ref: '#/components/schemas/AudioTrack'
+        subtitleTracks:
+          type: array
+          items:
+            $ref: '#/components/schemas/SubtitleTrack'
+        qualityLevels:
+          type: array
+          items:
+            $ref: '#/components/schemas/QualityLevel'
+        startPosition:
+          type: integer
+          description: Position de départ en secondes (reprise automatique)
+          example: 1245
+        expiresAt:
+          type: string
+          format: date-time
+          description: Expiration de la session (nécessite un renouvellement après)
+        chapters:
+          type: array
+          description: Chapitres du contenu (intro, générique de fin, récapitulatif...)
+          items:
+            $ref: '#/components/schemas/Chapter'
+    AudioTrack:
+      type: object
+      description: Piste audio disponible pour un contenu vidéo.
+      properties:
+        id:
+          type: string
+        language:
+          type: string
+          example: fr
+        label:
+          type: string
+          example: Français (Dolby Atmos)
+        codec:
+          type: string
+          enum:
+            - AAC
+            - AC3
+            - EAC3
+            - DOLBY_ATMOS
+            - DTS
+        isDefault:
+          type: boolean
+        isAudioDescription:
+          type: boolean
+          description: Piste d'audiodescription (accessibilité malvoyants)
+    SubtitleTrack:
+      type: object
+      description: Piste de sous-titres disponible pour un contenu vidéo.
+      properties:
+        id:
+          type: string
+        language:
+          type: string
+          example: fr
+        label:
+          type: string
+          example: Français
+        format:
+          type: string
+          enum:
+            - SRT
+            - VTT
+            - TTML
+            - IMSC
+        isDefault:
+          type: boolean
+        isForHearingImpaired:
+          type: boolean
+          description: Sous-titres pour sourds et malentendants (inclut effets sonores)
+    QualityLevel:
+      type: object
+      description: Niveau de qualité vidéo disponible avec ses caractéristiques techniques.
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+          enum:
+            - SD
+            - HD
+            - FULL_HD
+            - UHD_4K
+        resolution:
+          type: string
+          example: 3840x2160
+        bitrate:
+          type: integer
+          description: Débit binaire en kbps
+          example: 25000
+        hasHDR:
+          type: boolean
+        hasDolbyVision:
+          type: boolean
+    Chapter:
+      type: object
+      description: Chapitre d'un contenu (intro, générique, récapitulatif, scène post-crédit...).
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum:
+            - INTRO
+            - RECAP
+            - CREDITS
+            - POST_CREDITS
+            - CHAPTER
+        title:
+          type: string
+          nullable: true
+          example: 'Chapitre 1 : Le commencement'
+        startSeconds:
+          type: integer
+          example: 0
+        endSeconds:
+          type: integer
+          example: 90
+        isSkippable:
+          type: boolean
+          description: Si true, un bouton "Passer" est affiché
+    WatchProgress:
+      type: object
+      description: |
+        Progression de visionnage d'un contenu pour un profil donné. Utilisé pour la reprise automatique et le marquage "Déjà vu".
+      properties:
+        contentId:
+          type: string
+        episodeId:
+          type: string
+          nullable: true
+        profileId:
+          type: string
+        positionSeconds:
+          type: integer
+          description: Position actuelle en secondes
+          example: 3642
+        durationSeconds:
+          type: integer
+          description: Durée totale du contenu en secondes
+          example: 8325
+        percentWatched:
+          type: number
+          format: double
+          description: Pourcentage visionné (0 à 100)
+          example: 43.7
+        isCompleted:
+          type: boolean
+          description: Contenu visionné à plus de 90%
+        lastWatchedAt:
+          type: string
+          format: date-time
+        deviceId:
+          type: string
+          description: Appareil depuis lequel le visionnage a eu lieu
+    UpdateProgressRequest:
+      type: object
+      description: Payload pour mettre à jour la progression de visionnage (heartbeat envoyé toutes les 30 secondes).
+      required:
+        - positionSeconds
+      properties:
+        positionSeconds:
+          type: integer
+          description: Position actuelle en secondes
+          example: 3672
+        durationSeconds:
+          type: integer
+        isCompleted:
+          type: boolean
+        deviceId:
+          type: string
+    PlaybackRequest:
+      type: object
+      description: Payload pour démarrer une session de lecture.
+      required:
+        - contentId
+      properties:
+        contentId:
+          type: string
+          example: tt0111161
+        episodeId:
+          type: string
+          nullable: true
+        profileId:
+          type: string
+          description: Profil pour lequel la lecture est démarrée
+        deviceId:
+          type: string
+        preferredQuality:
+          type: string
+          enum:
+            - AUTO
+            - SD
+            - HD
+            - FULL_HD
+            - UHD_4K
+          default: AUTO
+        preferredAudioLanguage:
+          type: string
+          example: fr
+        preferredSubtitleLanguage:
+          type: string
+          nullable: true
+          example: fr
+        startFromSeconds:
+          type: integer
+          nullable: true
+          description: Démarrer à une position spécifique (null = reprise automatique)
+    WatchlistItem:
+      type: object
+      description: Élément de la liste à regarder plus tard d'un profil.
+      properties:
+        id:
+          type: string
+          example: wl_001
+        content:
+          $ref: '#/components/schemas/ContentSummary'
+        addedAt:
+          type: string
+          format: date-time
+        note:
+          type: string
+          nullable: true
+          example: Recommandé par Marie
+    Watchlist:
+      type: object
+      description: Liste complète des contenus à regarder plus tard d'un profil.
+      properties:
+        profileId:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/WatchlistItem'
+        totalItems:
+          type: integer
+        meta:
+          $ref: '#/components/schemas/PaginatedMeta'
+    HistoryItem:
+      type: object
+      description: Entrée dans l'historique de visionnage d'un profil.
+      properties:
+        id:
+          type: string
+        content:
+          $ref: '#/components/schemas/ContentSummary'
+        episode:
+          $ref: '#/components/schemas/Episode'
+          nullable: true
+        progress:
+          $ref: '#/components/schemas/WatchProgress'
+        watchedAt:
+          type: string
+          format: date-time
+    Rating:
+      type: object
+      description: Note et avis d'un utilisateur sur un contenu.
+      properties:
+        id:
+          type: string
+          example: rat_001
+        contentId:
+          type: string
+        profileId:
+          type: string
+        score:
+          type: integer
+          minimum: 1
+          maximum: 5
+          description: Note de 1 à 5 étoiles
+          example: 5
+        title:
+          type: string
+          nullable: true
+          example: Un chef-d'œuvre absolu
+        body:
+          type: string
+          nullable: true
+        containsSpoilers:
+          type: boolean
+          default: false
+        helpfulVotes:
+          type: integer
+        notHelpfulVotes:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+    RatingCreate:
+      type: object
+      description: Payload pour noter un contenu.
+      required:
+        - contentId
+        - score
+      properties:
+        contentId:
+          type: string
+        score:
+          type: integer
+          minimum: 1
+          maximum: 5
+        title:
+          type: string
+          nullable: true
+        body:
+          type: string
+          nullable: true
+        containsSpoilers:
+          type: boolean
+          default: false
+    RatingList:
+      type: object
+      description: Liste d'avis avec statistiques agrégées.
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Rating'
+        averageRating:
+          type: number
+          format: double
+          example: 4.7
+        totalRatings:
+          type: integer
+        ratingBreakdown:
+          type: object
+          description: Nombre d'avis par note (1 à 5 étoiles)
+          properties:
+            '1':
+              type: integer
+            '2':
+              type: integer
+            '3':
+              type: integer
+            '4':
+              type: integer
+            '5':
+              type: integer
+        meta:
+          $ref: '#/components/schemas/PaginatedMeta'
+    Download:
+      type: object
+      description: |
+        Contenu téléchargé pour visionnage hors ligne. Les téléchargements expirent après 30 jours ou 48h après le premier lancement (selon ce qui survient en premier). Le nombre de téléchargements simultanés est limité selon l'abonnement.
+      properties:
+        id:
+          type: string
+          example: dl_001
+        contentId:
+          type: string
+        episodeId:
+          type: string
+          nullable: true
+        content:
+          $ref: '#/components/schemas/ContentSummary'
+        status:
+          type: string
+          enum:
+            - QUEUED
+            - DOWNLOADING
+            - COMPLETED
+            - EXPIRED
+            - FAILED
+        quality:
+          type: string
+          enum:
+            - SD
+            - HD
+            - FULL_HD
+          description: 4K non disponible en téléchargement
+        fileSizeBytes:
+          type: integer
+          description: Taille du fichier téléchargé en octets
+          example: 3200000000
+        downloadedBytes:
+          type: integer
+          description: Octets déjà téléchargés (pour la barre de progression)
+        deviceId:
+          type: string
+          description: Appareil sur lequel le téléchargement a été effectué
+        expiresAt:
+          type: string
+          format: date-time
+          description: Date d'expiration du téléchargement
+        createdAt:
+          type: string
+          format: date-time
+    DownloadRequest:
+      type: object
+      description: Payload pour démarrer le téléchargement d'un contenu.
+      required:
+        - contentId
+        - deviceId
+      properties:
+        contentId:
+          type: string
+        episodeId:
+          type: string
+          nullable: true
+        deviceId:
+          type: string
+        quality:
+          type: string
+          enum:
+            - SD
+            - HD
+            - FULL_HD
+          default: HD
+        audioLanguage:
+          type: string
+          example: fr
+        subtitleLanguage:
+          type: string
+          nullable: true
+    SubscriptionPlan:
+      type: object
+      description: Plan d'abonnement Prime Video disponible.
+      properties:
+        id:
+          type: string
+          example: plan_prime_monthly
+        name:
+          type: string
+          example: Prime Video Mensuel
+        type:
+          type: string
+          enum:
+            - PRIME_MONTHLY
+            - PRIME_ANNUAL
+            - PRIME_VIDEO_ONLY
+            - CHANNEL_ADDON
+            - STUDENT
+        price:
+          $ref: '#/components/schemas/Money'
+        billingPeriod:
+          type: string
+          enum:
+            - MONTHLY
+            - ANNUAL
+        trialDays:
+          type: integer
+          description: Durée de l'essai gratuit en jours
+          example: 30
+        features:
+          type: array
+          items:
+            type: string
+          example:
+            - Streaming illimité des contenus Prime
+            - Téléchargements hors ligne
+            - Qualité jusqu'à 4K Ultra HD
+            - Dolby Atmos
+            - 6 profils par compte
+            - Prime livraison gratuite
+        maxSimultaneousStreams:
+          type: integer
+          example: 3
+        maxDownloads:
+          type: integer
+          example: 25
+    UserSubscription:
+      type: object
+      description: Abonnement actif de l'utilisateur avec son statut et sa date de renouvellement.
+      properties:
+        id:
+          type: string
+        plan:
+          $ref: '#/components/schemas/SubscriptionPlan'
+        status:
+          type: string
+          enum:
+            - ACTIVE
+            - TRIAL
+            - PAST_DUE
+            - CANCELLED
+            - EXPIRED
+        startedAt:
+          type: string
+          format: date-time
+        currentPeriodEnd:
+          type: string
+          format: date-time
+          description: Date de fin de la période actuelle (prochain renouvellement)
+        cancelledAt:
+          type: string
+          format: date-time
+          nullable: true
+        isAutoRenew:
+          type: boolean
+        paymentMethod:
+          $ref: '#/components/schemas/PaymentMethodSummary'
+        addons:
+          type: array
+          description: Chaînes et add-ons souscrits
+          items:
+            $ref: '#/components/schemas/ChannelAddon'
+    ChannelAddon:
+      type: object
+      description: Chaîne supplémentaire souscrite en add-on (CANAL+, OCS, Eurosport...).
+      properties:
+        id:
+          type: string
+          example: channel_canal_plus
+        name:
+          type: string
+          example: CANAL+
+        logoUrl:
+          type: string
+          format: uri
+        price:
+          $ref: '#/components/schemas/Money'
+        billingPeriod:
+          type: string
+          enum:
+            - MONTHLY
+            - ANNUAL
+        status:
+          type: string
+          enum:
+            - ACTIVE
+            - TRIAL
+            - CANCELLED
+        currentPeriodEnd:
+          type: string
+          format: date-time
+    PaymentMethodSummary:
+      type: object
+      description: Version allégée d'un moyen de paiement (4 derniers chiffres, marque, défaut).
+      properties:
+        id:
+          type: string
+          example: pm_visa_1234
+        type:
+          type: string
+          enum:
+            - CREDIT_CARD
+            - DEBIT_CARD
+            - PAYPAL
+            - AMAZON_PAY
+            - GIFT_CARD
+        last4:
+          type: string
+          example: '4242'
+        brand:
+          type: string
+          example: Visa
+        isDefault:
+          type: boolean
+    PaymentMethod:
+      type: object
+      description: Moyen de paiement complet. Données sensibles tokenisées — jamais de numéro complet stocké.
+      allOf:
+        - $ref: '#/components/schemas/PaymentMethodSummary'
+        - type: object
+          properties:
+            holderName:
+              type: string
+            expiryMonth:
+              type: integer
+            expiryYear:
+              type: integer
+            createdAt:
+              type: string
+              format: date-time
+    PaymentMethodCreate:
+      type: object
+      description: |
+        Payload pour ajouter un moyen de paiement. Le `token` est généré côté client par le SDK PSP (ex: Stripe.js) — les données de carte ne transitent pas par les serveurs Prime Video.
+      required:
+        - type
+        - token
+      properties:
+        type:
+          type: string
+          enum:
+            - CREDIT_CARD
+            - DEBIT_CARD
+            - PAYPAL
+            - AMAZON_PAY
+        token:
+          type: string
+        isDefault:
+          type: boolean
+          default: false
+    Invoice:
+      type: object
+      description: Facture d'un abonnement ou d'un achat, conforme aux exigences fiscales.
+      properties:
+        id:
+          type: string
+        invoiceNumber:
+          type: string
+          example: PV-FR-2024-00001
+        description:
+          type: string
+          example: Amazon Prime Video – Abonnement mensuel
+        amount:
+          $ref: '#/components/schemas/Money'
+        taxAmount:
+          $ref: '#/components/schemas/Money'
+        pdfUrl:
+          type: string
+          format: uri
+        issuedAt:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum:
+            - PAID
+            - PENDING
+            - FAILED
+            - REFUNDED
+    Transaction:
+      type: object
+      description: Transaction financière (paiement, remboursement).
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum:
+            - SUBSCRIPTION
+            - RENTAL
+            - PURCHASE
+            - REFUND
+            - ADDON
+        description:
+          type: string
+        amount:
+          $ref: '#/components/schemas/Money'
+        status:
+          type: string
+          enum:
+            - COMPLETED
+            - PENDING
+            - FAILED
+            - REFUNDED
+        paymentMethod:
+          $ref: '#/components/schemas/PaymentMethodSummary'
+        createdAt:
+          type: string
+          format: date-time
+    Carousel:
+      type: object
+      description: Carrousel de contenus recommandés avec un titre contextuel.
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+          example: Parce que vous avez regardé Breaking Bad
+        type:
+          type: string
+          enum:
+            - CONTINUE_WATCHING
+            - BECAUSE_YOU_WATCHED
+            - TRENDING
+            - NEW_RELEASES
+            - TOP_RATED
+            - GENRE
+            - COLLECTION
+            - SIMILAR
+            - PRIME_ORIGINALS
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ContentSummary'
+    Notification:
+      type: object
+      description: Notification utilisateur (nouvelle sortie, rappel, système).
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum:
+            - NEW_EPISODE
+            - NEW_CONTENT
+            - EXPIRING_SOON
+            - REMINDER
+            - DOWNLOAD_COMPLETE
+            - SYSTEM
+            - PROMO
+        title:
+          type: string
+          example: Nouvel épisode disponible !
+        body:
+          type: string
+        imageUrl:
+          type: string
+          format: uri
+          nullable: true
+        contentId:
+          type: string
+          nullable: true
+        isRead:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+    ContentReminder:
+      type: object
+      description: Rappel configuré pour être notifié lors de la sortie d'un contenu attendu.
+      properties:
+        id:
+          type: string
+        contentId:
+          type: string
+        content:
+          $ref: '#/components/schemas/ContentSummary'
+        type:
+          type: string
+          enum:
+            - ON_RELEASE
+            - ONE_DAY_BEFORE
+            - ONE_WEEK_BEFORE
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+    ParentalSettings:
+      type: object
+      description: Paramètres de contrôle parental d'un profil.
+      properties:
+        profileId:
+          type: string
+        maxAgeRating:
+          type: string
+          enum:
+            - ALL
+            - U
+            - PG
+            - PG_13
+            - R_16
+            - R_18
+          description: Classification d'âge maximale autorisée sur ce profil
+        requirePinToChange:
+          type: boolean
+          description: Nécessite le PIN du compte pour modifier ces paramètres
+        blockedContentIds:
+          type: array
+          description: Contenus spécifiquement bloqués sur ce profil
+          items:
+            type: string
+        allowedGenres:
+          type: array
+          description: Si renseigné, uniquement ces genres sont accessibles
+          nullable: true
+          items:
+            type: string
+        purchasePin:
+          type: boolean
+          description: Demander le PIN avant tout achat ou location
+        viewingTimeLimit:
+          type: object
+          nullable: true
+          description: Limite de temps de visionnage quotidien
+          properties:
+            dailyLimitMinutes:
+              type: integer
+              example: 120
+            isActive:
+              type: boolean
+    AdGenerationRequest:
+      type: object
+      description: |
+        Paramètres pour générer une publicité ou bande-annonce par IA pour un contenu. L'IA analyse le contenu (synopsis, extraits, visuels) pour créer automatiquement un spot publicitaire optimisé selon le format et la plateforme cible.
+      required:
+        - contentId
+        - format
+      properties:
+        contentId:
+          type: string
+          description: Identifiant du contenu pour lequel générer la publicité
+          example: tt0111161
+        format:
+          type: string
+          enum:
+            - TRAILER_15S
+            - TRAILER_30S
+            - TRAILER_60S
+            - TRAILER_2MIN
+            - SOCIAL_REEL
+            - BANNER_AD
+            - EMAIL_HERO
+          description: Format de la publicité à générer
+          example: TRAILER_30S
+        targetAudience:
+          type: string
+          enum:
+            - GENERAL
+            - KIDS
+            - TEENS
+            - ADULTS
+            - CINEPHILES
+            - ACTION_FANS
+            - DRAMA_FANS
+          description: Audience cible pour adapter le ton et le montage
+          example: GENERAL
+        tone:
+          type: string
+          enum:
+            - EPIC
+            - EMOTIONAL
+            - HUMOROUS
+            - MYSTERIOUS
+            - ACTION_PACKED
+            - ROMANTIC
+            - THRILLING
+          description: Ton émotionnel de la publicité
+          example: EPIC
+        highlightAspects:
+          type: array
+          description: Aspects du contenu à mettre en avant
+          items:
+            type: string
+            enum:
+              - CAST
+              - AWARDS
+              - STORY
+              - ACTION
+              - HUMOR
+              - ROMANCE
+              - VISUALS
+              - SOUNDTRACK
+          example:
+            - CAST
+            - AWARDS
+            - STORY
+        includeVoiceover:
+          type: boolean
+          default: true
+          description: Inclure une voix off générée par IA
+        voiceoverLanguage:
+          type: string
+          example: fr
+        includeSubtitles:
+          type: boolean
+          default: true
+        musicStyle:
+          type: string
+          enum:
+            - ORCHESTRAL
+            - ELECTRONIC
+            - POP
+            - ACOUSTIC
+            - AMBIENT
+            - NONE
+          description: Style musical de la bande sonore générée
+          example: ORCHESTRAL
+        callToAction:
+          type: string
+          enum:
+            - WATCH_NOW
+            - START_FREE_TRIAL
+            - SUBSCRIBE
+            - RENT_NOW
+            - ADD_TO_LIST
+          description: Appel à l'action affiché en fin de publicité
+          example: WATCH_NOW
+        customInstructions:
+          type: string
+          maxLength: 500
+          description: Instructions personnalisées supplémentaires pour l'IA
+          example: Mettre l'accent sur la performance de Tom Hanks et les scènes émouvantes
+    AdGenerationJob:
+      type: object
+      description: |
+        Job de génération publicitaire par IA. La génération est asynchrone (peut prendre 30s à 5min selon le format). Utiliser polling sur `GET /ads/jobs/{jobId}` pour suivre l'avancement.
+      properties:
+        id:
+          type: string
+          example: adj_abc123
+        contentId:
+          type: string
+        request:
+          $ref: '#/components/schemas/AdGenerationRequest'
+        status:
+          type: string
+          enum:
+            - QUEUED
+            - ANALYZING
+            - GENERATING
+            - POST_PROCESSING
+            - COMPLETED
+            - FAILED
+          description: |
+            Étapes de génération : QUEUED → ANALYZING (analyse du contenu) → GENERATING (génération IA) → POST_PROCESSING (montage final) → COMPLETED
+        progress:
+          type: integer
+          description: Pourcentage d'avancement (0 à 100)
+          example: 67
+        estimatedCompletionAt:
+          type: string
+          format: date-time
+        adId:
+          type: string
+          nullable: true
+          description: ID de la publicité générée (disponible quand status = COMPLETED)
+        error:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+    GeneratedAd:
+      type: object
+      description: |
+        Publicité ou bande-annonce générée par IA pour un contenu Prime Video. Inclut plusieurs variantes pour A/B testing et tous les assets nécessaires à la diffusion sur différentes plateformes.
+      properties:
+        id:
+          type: string
+          example: ad_xyz789
+        contentId:
+          type: string
+        format:
+          type: string
+          enum:
+            - TRAILER_15S
+            - TRAILER_30S
+            - TRAILER_60S
+            - TRAILER_2MIN
+            - SOCIAL_REEL
+            - BANNER_AD
+            - EMAIL_HERO
+        title:
+          type: string
+          description: Titre généré pour cette publicité
+          example: Les Évadés – Bande-annonce officielle
+        variants:
+          type: array
+          description: Variantes générées pour A/B testing
+          items:
+            $ref: '#/components/schemas/AdVariant'
+        metrics:
+          $ref: '#/components/schemas/AdMetrics'
+        createdAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+          description: Les assets sont disponibles pendant 90 jours
+    AdVariant:
+      type: object
+      description: Variante d'une publicité générée (pour A/B testing).
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+          example: Variant A – Ton épique
+        videoUrl:
+          type: string
+          format: uri
+          description: URL de la vidéo générée (MP4)
+        thumbnailUrl:
+          type: string
+          format: uri
+          description: Miniature de la vidéo
+        voiceoverText:
+          type: string
+          nullable: true
+          description: Texte de la voix off utilisé
+          example: Certains oiseaux ne peuvent pas être mis en cage...
+        subtitleUrl:
+          type: string
+          format: uri
+          nullable: true
+          description: Fichier SRT des sous-titres
+        durationSeconds:
+          type: integer
+          example: 30
+        fileSizeBytes:
+          type: integer
+        generationScore:
+          type: number
+          format: double
+          description: Score de qualité interne de l'IA (0 à 1)
+          example: 0.87
+    AdMetrics:
+      type: object
+      description: Métriques de performance des publicités générées (si diffusées).
+      properties:
+        impressions:
+          type: integer
+          example: 124500
+        views:
+          type: integer
+          description: Nombre de vues complètes (>80% de la durée)
+          example: 87300
+        clickThroughRate:
+          type: number
+          format: double
+          description: Taux de clic (%)
+          example: 4.2
+        conversionRate:
+          type: number
+          format: double
+          description: Taux de conversion vers visionnage du contenu (%)
+          example: 1.8
+        averageViewDuration:
+          type: number
+          description: Durée moyenne de visionnage en secondes
+          example: 24.3
+    AdPublishRequest:
+      type: object
+      description: Payload pour publier une publicité générée sur des canaux de diffusion.
+      required:
+        - variantId
+        - channels
+      properties:
+        variantId:
+          type: string
+          description: ID de la variante à publier
+        channels:
+          type: array
+          description: Canaux de diffusion cibles
+          items:
+            type: string
+            enum:
+              - PRIME_VIDEO_HOMEPAGE
+              - PRIME_VIDEO_BROWSE
+              - EMAIL_CAMPAIGN
+              - PUSH_NOTIFICATION
+              - SOCIAL_INSTAGRAM
+              - SOCIAL_TIKTOK
+              - SOCIAL_YOUTUBE
+        targetAudienceIds:
+          type: array
+          description: Segments d'audience ciblés
+          items:
+            type: string
+        scheduledAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Date de diffusion planifiée (null = immédiatement)
+        budget:
+          $ref: '#/components/schemas/Money'
+    LiveEvent:
+      type: object
+      description: Événement en direct (match sportif, concert, cérémonie...).
+      properties:
+        id:
+          type: string
+          example: live_nfl_sb2024
+        type:
+          type: string
+          enum:
+            - SPORT
+            - CONCERT
+            - CEREMONY
+            - NEWS
+            - TALK_SHOW
+            - OTHER
+        title:
+          type: string
+          example: Super Bowl LVIII
+        description:
+          type: string
+        startTime:
+          type: string
+          format: date-time
+        endTime:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum:
+            - SCHEDULED
+            - LIVE
+            - REPLAY_AVAILABLE
+            - ENDED
+        thumbnail:
+          $ref: '#/components/schemas/ImageAsset'
+        isPrime:
+          type: boolean
+        viewerCount:
+          type: integer
+          nullable: true
+          description: Nombre de spectateurs en temps réel (si LIVE)
+        sport:
+          type: string
+          nullable: true
+          example: Football Américain
+        teams:
+          type: array
+          nullable: true
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              logoUrl:
+                type: string
+                format: uri
+              score:
+                type: integer
+                nullable: true
+    AccessibilityProfile:
+      type: object
+      description: Profil d'accessibilité d'un utilisateur (préférences pour malvoyants, malentendants...).
+      properties:
+        profileId:
+          type: string
+        subtitlesEnabled:
+          type: boolean
+        subtitleSize:
+          type: string
+          enum:
+            - SMALL
+            - MEDIUM
+            - LARGE
+            - EXTRA_LARGE
+        subtitleColor:
+          type: string
+          example: '#FFFFFF'
+        subtitleBackgroundColor:
+          type: string
+          example: '#000000'
+        subtitleOpacity:
+          type: number
+          minimum: 0
+          maximum: 1
+          example: 0.8
+        audioDescriptionEnabled:
+          type: boolean
+          description: Audiodescription activée (narration des éléments visuels pour malvoyants)
+        signLanguageEnabled:
+          type: boolean
+        highContrastMode:
+          type: boolean
+        reducedMotion:
+          type: boolean
+          description: Réduit les animations de l'interface
+    VoiceSearchResult:
+      type: object
+      description: Résultat d'une recherche vocale. Contient la transcription du texte reconnu, l'intention détectée et les contenus correspondants.
+      properties:
+        transcript:
+          type: string
+          description: Texte transcrit depuis l'audio
+          example: Mets-moi des animés shōnen
+        confidence:
+          type: number
+          format: double
+          description: Score de confiance de la transcription (0 à 1)
+          example: 0.97
+        detectedLanguage:
+          type: string
+          example: fr-FR
+        intent:
+          type: string
+          enum:
+            - SEARCH_CONTENT
+            - SEARCH_PERSON
+            - SEARCH_GENRE
+            - PLAYBACK_CONTROL
+            - NAVIGATION
+            - UNKNOWN
+          description: Intention détectée dans la commande vocale
+          example: SEARCH_GENRE
+        extractedEntities:
+          type: object
+          description: Entités extraites de la commande (titre, acteur, genre...)
+          properties:
+            contentTitle:
+              type: string
+              nullable: true
+            personName:
+              type: string
+              nullable: true
+            genre:
+              type: string
+              nullable: true
+              example: shōnen
+            contentType:
+              type: string
+              nullable: true
+            playbackCommand:
+              type: string
+              nullable: true
+              enum:
+                - PLAY
+                - PAUSE
+                - RESUME
+                - NEXT
+                - PREVIOUS
+                - REWIND
+                - FORWARD
+                - SUBTITLES_ON
+                - SUBTITLES_OFF
+                - null
+        results:
+          type: array
+          description: Contenus correspondant à la commande vocale
+          items:
+            $ref: '#/components/schemas/ContentSummary'
+        suggestion:
+          type: string
+          nullable: true
+          description: Suggestion en cas de faible confiance
+          example: 'Vouliez-vous dire : ''Demon Slayer'' ?'
+        processingTimeMs:
+          type: integer
+          example: 287
+    VoiceSearchJob:
+      type: object
+      description: Job de traitement audio asynchrone pour la recherche vocale. Suit les étapes QUEUED → TRANSCRIBING → SEARCHING → COMPLETED.
+      properties:
+        id:
+          type: string
+          example: vsj_abc123
+        status:
+          type: string
+          enum:
+            - QUEUED
+            - TRANSCRIBING
+            - SEARCHING
+            - COMPLETED
+            - FAILED
+        audioLengthSeconds:
+          type: number
+          description: Durée de l'audio soumis
+          example: 4.2
+        result:
+          $ref: '#/components/schemas/VoiceSearchResult'
+          nullable: true
+        error:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+    AnimeSubGenre:
+      type: object
+      description: Sous-genre du catalogue animé/manga avec sa définition et ses œuvres emblématiques. Chaque sous-genre correspond à une démographie ou un style narratif précis issu de la culture manga japonaise.
+      properties:
+        id:
+          type: string
+          example: shonen
+        nameJapanese:
+          type: string
+          example: 少年
+        nameRomaji:
+          type: string
+          example: Shōnen
+        nameLocalized:
+          type: string
+          example: Shōnen
+        description:
+          type: string
+          example: 'Destiné à un public de jeunes garçons (10-18 ans). Thèmes principaux : amitié, dépassement de soi, combats, évolution du héros. Format souvent long avec beaucoup d''épisodes.'
+        targetAudience:
+          type: string
+          example: Jeunes garçons 10-18 ans, mais apprécié par tous
+        ageRating:
+          type: string
+          example: PG_13
+        emblematicWorks:
+          type: array
+          description: Œuvres emblématiques du sous-genre disponibles sur Prime Video
+          items:
+            type: string
+          example:
+            - Naruto
+            - Dragon Ball Z
+            - My Hero Academia
+            - Demon Slayer
+            - One Piece
+        contentCount:
+          type: integer
+          description: Nombre de titres disponibles dans ce sous-genre
+          example: 87
+        thumbnailUrl:
+          type: string
+          format: uri
+          description: Image représentative du sous-genre
+    AnimeStudio:
+      type: object
+      description: Studio d'animation japonais avec son historique et ses œuvres majeures disponibles sur Prime Video.
+      properties:
+        id:
+          type: string
+          example: studio_ghibli
+        name:
+          type: string
+          example: Studio Ghibli
+        nameJapanese:
+          type: string
+          example: スタジオジブリ
+        foundedYear:
+          type: integer
+          example: 1985
+        country:
+          type: string
+          example: JP
+        description:
+          type: string
+          example: Studio d'animation japonais fondé en 1985 par Hayao Miyazaki et Isao Takahata. Connu pour ses films d'animation de haute qualité artistique comme Le Voyage de Chihiro et Princess Mononoke.
+        logoUrl:
+          type: string
+          format: uri
+        websiteUrl:
+          type: string
+          format: uri
+        notableDirectors:
+          type: array
+          items:
+            $ref: '#/components/schemas/Person'
+        totalWorksOnPrime:
+          type: integer
+          description: Nombre d'œuvres du studio disponibles on Prime Video
+          example: 21
+    AnimeSummary:
+      type: object
+      description: Version allégée d'un animé pour les listes, carousels et résultats de recherche. Inclut les informations spécifiques au medium animé (studio, sous-genre, statut de diffusion).
+      allOf:
+        - $ref: '#/components/schemas/ContentSummary'
+        - type: object
+          properties:
+            subGenre:
+              type: string
+              enum:
+                - shonen
+                - shojo
+                - seinen
+                - josei
+                - isekai
+                - school_life
+                - mecha
+                - slice_of_life
+                - sports
+                - fantasy
+                - mystery
+                - ecchi
+                - classics
+              example: shonen
+            studio:
+              type: string
+              example: MAPPA
+            episodeCount:
+              type: integer
+              nullable: true
+              description: Nombre total d'épisodes (null si en cours et inconnu)
+              example: 26
+            episodeDurationMinutes:
+              type: integer
+              description: Durée typique d'un épisode en minutes
+              example: 24
+            airStatus:
+              type: string
+              enum:
+                - ONGOING
+                - COMPLETED
+                - UPCOMING
+                - HIATUS
+              description: Statut de diffusion au Japon
+              example: COMPLETED
+            japaneseTitle:
+              type: string
+              description: Titre original japonais
+              example: 鬼滅の刃
+            romajiTitle:
+              type: string
+              description: Titre romanisé (translittération)
+              example: Kimetsu no Yaiba
+            adaptedFrom:
+              type: string
+              enum:
+                - MANGA
+                - LIGHT_NOVEL
+                - VISUAL_NOVEL
+                - GAME
+                - ORIGINAL
+                - WEBTOON
+              description: Source dont l'animé est adapté
+              example: MANGA
+            seasonNumber:
+              type: integer
+              nullable: true
+              description: Numéro de saison (null pour les films)
+              example: 1
+    AnimeContent:
+      type: object
+      description: 'Fiche complète d''un animé avec toutes les informations spécifiques au medium : studio, sous-genre, adaptation, statut de diffusion japonais, compositeur de la bande originale (OST).'
+      allOf:
+        - $ref: '#/components/schemas/Content'
+        - type: object
+          properties:
+            subGenre:
+              type: string
+            studio:
+              $ref: '#/components/schemas/AnimeStudio'
+            japaneseTitle:
+              type: string
+            romajiTitle:
+              type: string
+            adaptedFrom:
+              type: string
+              enum:
+                - MANGA
+                - LIGHT_NOVEL
+                - VISUAL_NOVEL
+                - GAME
+                - ORIGINAL
+                - WEBTOON
+            originalAuthor:
+              type: string
+              description: Auteur/dessinateur de l'œuvre source
+              example: Koyoharu Gotouge
+            airStatus:
+              type: string
+              enum:
+                - ONGOING
+                - COMPLETED
+                - UPCOMING
+                - HIATUS
+            originalAirDate:
+              type: string
+              format: date
+              description: Date de première diffusion au Japon
+            originalNetwork:
+              type: string
+              description: Chaîne de diffusion originale japonaise
+              example: Fuji TV
+            episodeCount:
+              type: integer
+              nullable: true
+            episodeDurationMinutes:
+              type: integer
+            seasonCount:
+              type: integer
+              nullable: true
+            composer:
+              $ref: '#/components/schemas/Person'
+              description: Compositeur de la bande originale (OST)
+            openingTheme:
+              type: object
+              nullable: true
+              description: Générique d'ouverture
+              properties:
+                title:
+                  type: string
+                  example: Gurenge
+                artist:
+                  type: string
+                  example: LiSA
+            endingTheme:
+              type: object
+              nullable: true
+              description: Générique de fin
+              properties:
+                title:
+                  type: string
+                artist:
+                  type: string
+            relatedAnime:
+              type: array
+              description: Œuvres liées (préquelles, suites, spin-offs)
+              items:
+                $ref: '#/components/schemas/AnimeSummary'
+    KDramaSubGenre:
+      type: object
+      description: Sous-genre du catalogue K-Drama avec sa définition, son public cible et des exemples d'œuvres emblématiques. Les K-Dramas coréens se distinguent par leur format court (généralement 16 épisodes) et leurs thèmes souvent plus audacieux que les dramas d'autres pays.
+      properties:
+        id:
+          type: string
+          example: romance
+        name:
+          type: string
+          example: Romance
+        nameKorean:
+          type: string
+          example: 로맨스
+        description:
+          type: string
+          example: Dramas centrés sur une histoire d'amour principale, souvent avec des obstacles sociaux ou familiaux. Le genre le plus populaire du K-Drama, touchant un public mondial.
+        targetAudience:
+          type: string
+          example: Tous publics, surtout femmes 15-35 ans
+        emblematicWorks:
+          type: array
+          items:
+            type: string
+          example:
+            - Crash Landing on You
+            - Goblin
+            - Business Proposal
+            - Her Private Life
+        contentCount:
+          type: integer
+          example: 143
+    KDramaSummary:
+      type: object
+      description: 'Version allégée d''un K-Drama pour les listes. Inclut les informations spécifiques : réseau de diffusion coréen, nombre d''épisodes, OST.'
+      allOf:
+        - $ref: '#/components/schemas/ContentSummary'
+        - type: object
+          properties:
+            subGenre:
+              type: string
+              enum:
+                - romance
+                - romance_fantasy
+                - thriller
+                - historical
+                - comedy
+                - family
+                - medical
+                - legal
+                - school
+                - political
+                - fantasy
+                - webtoon_adapted
+              example: romance
+            network:
+              type: string
+              description: Chaîne de diffusion originale coréenne
+              enum:
+                - tvN
+                - JTBC
+                - MBC
+                - KBS
+                - SBS
+                - OCN
+                - Netflix_Korea
+                - Kakao_TV
+              example: tvN
+            episodeCount:
+              type: integer
+              example: 16
+            episodeDurationMinutes:
+              type: integer
+              description: Durée typique d'un épisode (souvent 60-70 min pour les K-Dramas)
+              example: 65
+            airStatus:
+              type: string
+              enum:
+                - ONGOING
+                - COMPLETED
+                - UPCOMING
+              example: COMPLETED
+            koreanTitle:
+              type: string
+              description: Titre original en hangul coréen
+              example: 사랑의 불시착
+            airDays:
+              type: string
+              description: Jours de diffusion hebdomadaire en Corée
+              example: Samedi & Dimanche
+            isWebtoonAdapted:
+              type: boolean
+              description: Ce K-Drama est adapté d'un webtoon
+              example: false
+    KDramaContent:
+      type: object
+      description: 'Fiche complète d''un K-Drama avec toutes les informations spécifiques : réseau coréen, casting complet (avec prononciations romanisées), OST, agences de talent, liens vers le webtoon source si applicable.'
+      allOf:
+        - $ref: '#/components/schemas/Content'
+        - type: object
+          properties:
+            subGenre:
+              type: string
+            network:
+              type: string
+            koreanTitle:
+              type: string
+            airStatus:
+              type: string
+              enum:
+                - ONGOING
+                - COMPLETED
+                - UPCOMING
+            originalAirDate:
+              type: string
+              format: date
+            episodeCount:
+              type: integer
+            episodeDurationMinutes:
+              type: integer
+            airDays:
+              type: string
+            isWebtoonAdapted:
+              type: boolean
+            webtoonSource:
+              type: object
+              nullable: true
+              description: Webtoon dont ce K-Drama est adapté
+              properties:
+                title:
+                  type: string
+                  example: True Beauty
+                author:
+                  type: string
+                  example: Yaongyi
+                platform:
+                  type: string
+                  enum:
+                    - LINE_WEBTOON
+                    - KAKAOPAGE
+                    - NAVER
+                    - LEZHIN
+                  example: LINE_WEBTOON
+                url:
+                  type: string
+                  format: uri
+                  nullable: true
+            ost:
+              type: array
+              description: Bande originale (OST) — souvent aussi populaire que le drama lui-même
+              items:
+                type: object
+                properties:
+                  title:
+                    type: string
+                    example: Davichi - This Love
+                  artist:
+                    type: string
+                  episode:
+                    type: integer
+                    nullable: true
+            productionCompanies:
+              type: array
+              description: Sociétés de production coréennes
+              items:
+                type: string
+              example:
+                - Hwa&Dam Pictures
+                - Studio Dragon
+    WebtoonSubGenre:
+      type: object
+      description: Sous-genre des adaptations webtoon (manhwa numérique coréen). Les webtoons sont des BD numériques lues verticalement sur mobile, dont beaucoup ont été adaptées en K-Drama ou en animé.
+      properties:
+        id:
+          type: string
+          example: action_fantasy
+        name:
+          type: string
+          example: Action / Fantasy
+        description:
+          type: string
+          example: Webtoons d'action avec des éléments fantastiques — pouvoirs surnaturels, donjons, systèmes de jeu vidéo appliqués au monde réel. Très populaire depuis Solo Leveling.
+        emblematicWorks:
+          type: array
+          items:
+            type: string
+          example:
+            - Solo Leveling
+            - Tower of God
+            - The God of High School
+            - Noblesse
+        contentCount:
+          type: integer
+          example: 34
+    WebtoonContent:
+      type: object
+      description: Fiche complète d'une adaptation webtoon avec le lien vers l'œuvre originale, le nom de l'auteur/dessinateur et la plateforme d'origine. Permet aux fans du webtoon de retrouver facilement son adaptation.
+      allOf:
+        - $ref: '#/components/schemas/Content'
+        - type: object
+          properties:
+            subGenre:
+              type: string
+            adaptationType:
+              type: string
+              enum:
+                - KDRAMA
+                - ANIME
+                - MOVIE
+              description: Type d'adaptation (série coréenne, animé japonais ou film)
+            originalWebtoon:
+              type: object
+              description: Webtoon original dont cette œuvre est adaptée
+              properties:
+                title:
+                  type: string
+                  example: Solo Leveling
+                koreanTitle:
+                  type: string
+                  example: 나 혼자만 레벨업
+                author:
+                  type: string
+                  example: Chugong
+                artist:
+                  type: string
+                  example: DUBU (Jang Sung-rak)
+                platform:
+                  type: string
+                  enum:
+                    - LINE_WEBTOON
+                    - KAKAOPAGE
+                    - NAVER
+                    - LEZHIN
+                publishedFrom:
+                  type: string
+                  format: date
+                publishedTo:
+                  type: string
+                  format: date
+                  nullable: true
+                chaptersCount:
+                  type: integer
+                  nullable: true
+                platformUrl:
+                  type: string
+                  format: uri
+                  nullable: true
+            adaptationFaithfulness:
+              type: string
+              enum:
+                - FAITHFUL
+                - LOOSELY_ADAPTED
+                - INSPIRED_BY
+              description: Fidélité de l'adaptation par rapport au webtoon original
+  responses:
+    Unauthorized:
+      description: Non authentifié — token manquant, invalide ou expiré
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: UNAUTHORIZED
+            message: Token manquant ou invalide. Utilisez POST /auth/login pour obtenir un token.
+    Forbidden:
+      description: Accès refusé — vous n'avez pas les droits sur cette ressource
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Ressource introuvable
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    ValidationError:
+      description: Erreur de validation — les données envoyées sont invalides
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Conflict:
+      description: Conflit — la ressource existe déjà
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    TooManyRequests:
+      description: Limite de taux dépassée — réessayer après le délai indiqué dans le header Retry-After
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    InternalServerError:
+      description: Erreur interne du serveur
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+  parameters:
+    PageParam:
+      name: page
+      in: query
+      description: Numéro de page (commence à 1)
+      schema:
+        type: integer
+        default: 1
+        minimum: 1
+    PageSizeParam:
+      name: pageSize
+      in: query
+      description: Nombre d'éléments par page (max 100)
+      schema:
+        type: integer
+        default: 20
+        minimum: 1
+        maximum: 100
+    ContentIdParam:
+      name: contentId
+      in: path
+      required: true
+      description: Identifiant unique du contenu (IMDB ID ou ID interne)
+      schema:
+        type: string
+        example: tt0111161
+    ProfileIdParam:
+      name: profileId
+      in: path
+      required: true
+      description: Identifiant unique du profil
+      schema:
+        type: string
+        example: prof_xyz789
+    AcceptLanguageParam:
+      name: Accept-Language
+      in: header
+      description: |
+        Langue souhaitée pour les contenus localisés (titres, synopsis, interface). Format BCP 47. Si la langue demandée n'est pas disponible, retour en anglais (en-US).
+      schema:
+        type: string
+        example: fr-FR
+        default: fr-FR
+      required: false
+  examples:
+    AnimeExample:
+      summary: Fiche d'un Anime populaire (Solo Leveling)
+      value:
+        id: cont_anime_001
+        type: SERIES
+        title: Solo Leveling
+        synopsis: Dans un monde où des portails s'ouvrent vers des donjons...
+        releaseYear: 2024
+        maturityRating: 16+
+        genres:
+          - Anime
+          - Action
+          - Fantasy
+        rating: 4.9
+        posterUrl: https://cdn.primevideo.com/anime/sololeveling.jpg
+    AdsAIRequestExample:
+      summary: Requête de génération de bande-annonce IA
+      value:
+        contentId: cont_anime_001
+        targetProfileId: prof_123
+        customPrompt: Fais une bande-annonce centrée sur l'évolution du personnage principal.
+        durationSeconds: 30
+paths:
+  /auth/register:
+    post:
+      tags:
+        - Auth
+      summary: Créer un compte Prime Video
+      operationId: registerUser
+      description: |
+        Crée un nouveau compte utilisateur Prime Video.
+        **Fonctionnement :** 1. Vérifie que l'email n'est pas déjà utilisé (sinon `409 Conflict`). 2. Hache le mot de passe avec bcrypt — jamais stocké en clair. 3. Envoie un email de vérification. 4. Retourne immédiatement des tokens JWT.
+        **Règles mot de passe :** minimum 8 caractères, au moins une majuscule et un chiffre.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+            example:
+              email: jean.dupont@email.com
+              password: MonMotDePasse123!
+              firstName: Jean
+              lastName: Dupont
+              country: FR
+      responses:
+        '201':
+          description: Compte créé — tokens retournés pour connexion immédiate
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '409':
+          description: Email déjà utilisé sur un compte existant
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: EMAIL_ALREADY_EXISTS
+                message: Un compte existe déjà avec cet email.
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /auth/login:
+    post:
+      tags:
+        - Auth
+      summary: Connexion
+      operationId: loginUser
+      description: |
+        Authentifie un utilisateur et retourne des tokens JWT.
+        **Si le 2FA est activé :** la réponse contient `requiresMFA: true` et un `mfaToken` temporaire (5 min) au lieu des tokens définitifs. Appeler ensuite `POST /auth/mfa/challenge` pour compléter la connexion.
+        **Sécurité :** limité à 10 tentatives par minute par IP (protection brute-force). Après 5 échecs consécutifs, un CAPTCHA est requis.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            example:
+              email: jean.dupont@email.com
+              password: MonMotDePasse123!
+              deviceId: device_abc123
+      responses:
+        '200':
+          description: Connexion réussie
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          description: Identifiants incorrects
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: INVALID_CREDENTIALS
+                message: Email ou mot de passe incorrect.
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /auth/logout:
+    post:
+      tags:
+        - Auth
+      summary: Déconnexion
+      operationId: logoutUser
+      description: |
+        Invalide le refresh token actuel côté serveur. L'`accessToken` reste valide jusqu'à son expiration naturelle (1h max) — comportement standard des architectures JWT stateless.
+        Passer `allDevices: true` dans le body pour déconnecter tous les appareils.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                allDevices:
+                  type: boolean
+                  default: false
+                  description: Si true, invalide tous les refresh tokens de tous les appareils
+      responses:
+        '204':
+          description: Déconnexion réussie
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /auth/refresh:
+    post:
+      tags:
+        - Auth
+      summary: Rafraîchir le token d'accès
+      operationId: refreshToken
+      description: |
+        Génère un nouvel `accessToken` à partir d'un `refreshToken` valide.
+        **Pourquoi ?** L'`accessToken` expire toutes les heures pour des raisons de sécurité. Au lieu de redemander le mot de passe, le client utilise silencieusement le `refreshToken` (valable 30 jours) pour obtenir un nouveau token.
+        **Rotation automatique :** chaque appel invalide l'ancien `refreshToken` et en retourne un nouveau (refresh token rotation).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshTokenRequest'
+      responses:
+        '200':
+          description: Nouveau token d'accès généré
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: Refresh token invalide ou expiré — reconnexion requise
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /auth/forgot-password:
+    post:
+      tags:
+        - Auth
+      summary: Demander la réinitialisation du mot de passe
+      operationId: forgotPassword
+      description: |
+        Déclenche l'envoi d'un email de réinitialisation de mot de passe.
+        **Sécurité :** la réponse est identique que l'email existe ou non dans la base de données — cela évite de révéler quels emails sont enregistrés sur la plateforme (attaque par énumération de comptes).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ForgotPasswordRequest'
+      responses:
+        '200':
+          description: Email envoyé si le compte existe
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Si un compte correspond à cet email, un lien de réinitialisation vous a été envoyé.
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /auth/reset-password:
+    post:
+      tags:
+        - Auth
+      summary: Réinitialiser le mot de passe
+      operationId: resetPassword
+      description: |
+        Réinitialise le mot de passe via le token reçu par email.
+        Le token est à usage unique et expire après 15 minutes. Une fois utilisé, il est immédiatement invalidé. Après modification, tous les `refreshToken` existants sont invalidés (déconnexion de tous les appareils).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordRequest'
+      responses:
+        '200':
+          description: Mot de passe réinitialisé avec succès
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '400':
+          description: Token invalide ou expiré
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: INVALID_TOKEN
+                message: Le lien de réinitialisation est invalide ou a expiré.
+  /auth/change-password:
+    post:
+      tags:
+        - Auth
+      summary: Changer le mot de passe
+      operationId: changePassword
+      description: |
+        Change le mot de passe de l'utilisateur connecté.
+        Requiert le mot de passe actuel pour confirmer l'identité — cela protège contre le cas où quelqu'un aurait accès à une session active sans connaître le mot de passe.
+        Après modification, tous les `refreshToken` existants sont invalidés (déconnexion forcée sur tous les appareils sauf l'appareil actuel).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordRequest'
+      responses:
+        '200':
+          description: Mot de passe modifié
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '400':
+          description: Mot de passe actuel incorrect ou nouveau mot de passe invalide
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /auth/verify-email/{token}:
+    get:
+      tags:
+        - Auth
+      summary: Vérifier l'adresse email
+      operationId: verifyEmail
+      description: |
+        Confirme l'adresse email via le lien envoyé lors de l'inscription.
+        Le token est un UUID signé valable 24 heures. Une fois l'email vérifié, l'utilisateur peut accéder à toutes les fonctionnalités (streaming, téléchargements, avis...).
+      security: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Email vérifié avec succès
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '400':
+          description: Token invalide ou expiré
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /auth/mfa/setup:
+    post:
+      tags:
+        - Auth
+      summary: Initialiser la configuration 2FA
+      operationId: setupMFA
+      description: |
+        Initialise la configuration de l'authentification à deux facteurs (2FA/MFA).
+        **Comment ça marche ?** 1. Le serveur génère une clé secrète TOTP unique pour cet utilisateur. 2. Un QR code est retourné — à scanner avec Google Authenticator ou Authy. 3. L'application génère un code à 6 chiffres renouvelé toutes les 30 secondes. 4. Le 2FA n'est pas encore actif — appeler `POST /auth/mfa/verify` avec
+           le premier code pour confirmer et activer.
+
+        Des **codes de secours** sont retournés — à conserver hors ligne en cas de perte du téléphone.
+      responses:
+        '200':
+          description: Configuration 2FA initialisée — QR code et codes de secours retournés
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MFASetup'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: Le 2FA est déjà activé sur ce compte
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /auth/mfa/verify:
+    post:
+      tags:
+        - Auth
+      summary: Activer le 2FA
+      operationId: verifyMFA
+      description: |
+        Active définitivement le 2FA en validant le premier code TOTP généré par l'application.
+        Après activation, chaque connexion nécessitera ce second facteur en plus du mot de passe.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - code
+              properties:
+                code:
+                  type: string
+                  pattern: ^\d{6}$
+                  example: '123456'
+      responses:
+        '200':
+          description: 2FA activé avec succès
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '400':
+          description: Code TOTP invalide ou expiré
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /auth/mfa/challenge:
+    post:
+      tags:
+        - Auth
+      summary: Valider le second facteur lors d'une connexion
+      operationId: challengeMFA
+      description: |
+        Valide le second facteur lors d'une connexion sur un compte avec 2FA activé.
+        **Flux complet de connexion avec 2FA :** 1. `POST /auth/login` → retourne `requiresMFA: true` et un `mfaToken` temporaire (5 min) 2. `POST /auth/mfa/challenge` avec `mfaToken` + code TOTP → retourne les tokens définitifs
+        Accepte un code TOTP (6 chiffres, valide 30 sec) ou un code de secours (à usage unique).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - mfaToken
+                - code
+              properties:
+                mfaToken:
+                  type: string
+                  description: Token temporaire reçu après POST /auth/login
+                code:
+                  type: string
+                  description: Code TOTP (6 chiffres) ou code de secours
+                  example: '123456'
+      responses:
+        '200':
+          description: Authentification complète — tokens d'accès retournés
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '400':
+          description: Code invalide ou expiré
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: mfaToken invalide ou expiré — relancer POST /auth/login
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /auth/mfa/disable:
+    post:
+      tags:
+        - Auth
+      summary: Désactiver le 2FA
+      operationId: disableMFA
+      description: |
+        Désactive le 2FA sur le compte.
+        Requiert le mot de passe ET un code TOTP valide — cela empêche un attaquant ayant accès à une session active de désactiver la protection.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - password
+                - code
+              properties:
+                password:
+                  type: string
+                  format: password
+                code:
+                  type: string
+                  pattern: ^\d{6}$
+      responses:
+        '200':
+          description: 2FA désactivé
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '400':
+          description: Mot de passe ou code incorrect
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /auth/devices:
+    get:
+      tags:
+        - Auth
+      summary: Lister les appareils connectés
+      operationId: listDevices
+      description: |
+        Liste tous les appareils connectés au compte. Permet à l'utilisateur de surveiller les connexions actives et de déconnecter les appareils non reconnus.
+      responses:
+        '200':
+          description: Liste des appareils connectés
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Device'
+                  maxDevices:
+                    type: integer
+                    description: Nombre maximum d'appareils simultanés autorisés par le plan
+                    example: 3
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /auth/devices/{deviceId}:
+    delete:
+      tags:
+        - Auth
+      summary: Déconnecter un appareil
+      operationId: disconnectDevice
+      description: |
+        Révoque l'accès d'un appareil spécifique en invalidant ses tokens. L'appareil devra se reconnecter pour accéder au contenu. Utile en cas de perte ou de vol d'un appareil.
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Appareil déconnecté
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /users/me:
+    get:
+      tags:
+        - Users
+      summary: Récupérer le profil du compte
+      operationId: getMyAccount
+      description: |
+        Retourne le compte complet de l'utilisateur connecté (identifié via le Bearer token). Inclut le statut Prime, les préférences et les informations de vérification.
+      responses:
+        '200':
+          description: Compte utilisateur
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    put:
+      tags:
+        - Users
+      summary: Mettre à jour le compte
+      operationId: updateMyAccount
+      description: |
+        Met à jour les informations du compte. Seuls les champs fournis sont modifiés (mise à jour partielle).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserUpdate'
+      responses:
+        '200':
+          description: Compte mis à jour
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    delete:
+      tags:
+        - Users
+      summary: Supprimer le compte
+      operationId: deleteMyAccount
+      description: |
+        Supprime définitivement le compte (droit à l'effacement RGPD).
+        **Conséquences :** - Données personnelles supprimées/anonymisées sous 30 jours - Abonnements résiliés immédiatement (pas de remboursement au prorata) - Historique de visionnage effacé - Contenus achetés/loués perdus (non récupérables) - Téléchargements invalidés
+        **Action irréversible.**
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - password
+              properties:
+                password:
+                  type: string
+                  format: password
+                  description: Confirmation du mot de passe pour sécuriser la suppression
+                reason:
+                  type: string
+                  enum:
+                    - TOO_EXPENSIVE
+                    - NOT_ENOUGH_CONTENT
+                    - TECHNICAL_ISSUES
+                    - PRIVACY_CONCERNS
+                    - OTHER
+      responses:
+        '204':
+          description: Compte supprimé
+        '400':
+          description: Mot de passe incorrect
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /users/me/preferences:
+    get:
+      tags:
+        - Users
+      summary: Récupérer les préférences
+      operationId: getPreferences
+      description: |
+        Retourne les préférences globales du compte (langue, qualité vidéo, langue audio par défaut, paramètres de notifications).
+      responses:
+        '200':
+          description: Préférences du compte
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserPreferences'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    put:
+      tags:
+        - Users
+      summary: Mettre à jour les préférences
+      operationId: updatePreferences
+      description: |
+        Met à jour les préférences globales du compte. Ces préférences s'appliquent à tous les profils sauf ceux qui ont leurs propres paramètres configurés.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserPreferences'
+      responses:
+        '200':
+          description: Préférences mises à jour
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserPreferences'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /profiles:
+    get:
+      tags:
+        - Profiles
+      summary: Lister les profils du compte
+      operationId: listProfiles
+      description: |
+        Liste tous les profils créés sur le compte. Chaque profil a son propre historique, watchlist, recommandations et paramètres. Un compte peut avoir jusqu'à 6 profils.
+        C'est l'équivalent de la sélection de profil au démarrage de Netflix.
+      responses:
+        '200':
+          description: Liste des profils
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Profile'
+                  maxProfiles:
+                    type: integer
+                    example: 6
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags:
+        - Profiles
+      summary: Créer un profil
+      operationId: createProfile
+      description: |
+        Crée un nouveau profil sur le compte. Les profils enfants (`isKidsProfile: true`) sont automatiquement restreints aux contenus adaptés (classification U et PG uniquement).
+        Le nombre maximum de profils dépend du plan d'abonnement (généralement 6).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProfileCreate'
+            example:
+              name: Marie
+              isKidsProfile: false
+              ageRating: R_18
+              language: fr
+      responses:
+        '201':
+          description: Profil créé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Profile'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: Nombre maximum de profils atteint
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: MAX_PROFILES_REACHED
+                message: Vous avez atteint le nombre maximum de profils (6) pour votre abonnement.
+  /profiles/{profileId}:
+    parameters:
+      - $ref: '#/components/parameters/ProfileIdParam'
+    get:
+      tags:
+        - Profiles
+      summary: Récupérer un profil
+      operationId: getProfile
+      description: Retourne le détail d'un profil spécifique avec ses paramètres.
+      responses:
+        '200':
+          description: Profil
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Profile'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags:
+        - Profiles
+      summary: Modifier un profil
+      operationId: updateProfile
+      description: |
+        Modifie les paramètres d'un profil (nom, avatar, restrictions d'âge, PIN...). Seul le profil principal peut modifier les restrictions du compte.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProfileUpdate'
+      responses:
+        '200':
+          description: Profil mis à jour
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Profile'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags:
+        - Profiles
+      summary: Supprimer un profil
+      operationId: deleteProfile
+      description: |
+        Supprime un profil et tout son historique, watchlist et données associées. Le profil principal (`isPrimary: true`) ne peut pas être supprimé. **Action irréversible.**
+      responses:
+        '204':
+          description: Profil supprimé
+        '400':
+          description: Impossible de supprimer le profil principal
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /profiles/{profileId}/verify-pin:
+    post:
+      tags:
+        - Profiles
+      summary: Vérifier le PIN d'accès à un profil
+      operationId: verifyProfilePin
+      description: |
+        Valide le code PIN d'un profil protégé. Retourne un token de session profil valable 4 heures. Ce token doit être inclus dans les requêtes suivantes via le header `X-Profile-Token`.
+      parameters:
+        - $ref: '#/components/parameters/ProfileIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProfilePin'
+      responses:
+        '200':
+          description: PIN validé — token de session profil retourné
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  profileToken:
+                    type: string
+                    description: Token de session profil valable 4 heures
+                  expiresIn:
+                    type: integer
+                    example: 14400
+        '401':
+          description: PIN incorrect
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /profiles/avatars:
+    get:
+      tags:
+        - Profiles
+      summary: Lister les avatars disponibles
+      operationId: listAvatars
+      description: |
+        Retourne la galerie d'avatars disponibles pour personnaliser un profil. Inclut des avatars génériques et des avatars thématiques liés aux personnages des contenus Prime Video.
+      security: []
+      responses:
+        '200':
+          description: Galerie d'avatars
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  categories:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                          example: Personnages Prime Video
+                        avatars:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                              url:
+                                type: string
+                                format: uri
+                              label:
+                                type: string
+  /catalog:
+    get:
+      tags:
+        - Catalog
+      summary: Parcourir le catalogue
+      operationId: browseCatalog
+      description: |
+        Liste les contenus du catalogue avec filtres avancés. Retourne des `ContentSummary` (version allégée) pour des performances optimales. Utilisez `GET /catalog/{contentId}` pour le détail complet d'un contenu.
+        **Filtres disponibles :** - `type` : MOVIE, SERIES, DOCUMENTARY, SHORT, SPECIAL, LIVE, MINI_SERIES - `genre` : Action, Comédie, Drame, Thriller, Science-fiction... - `year` : Année de sortie - `isPrime` : Uniquement les contenus inclus dans Prime - `hasHDR` / `has4K` : Filtrer par qualité vidéo - `minRating` / `maxRating` : Filtrer par note - `language` : Langue audio disponible
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PageSizeParam'
+        - $ref: '#/components/parameters/AcceptLanguageParam'
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum:
+              - MOVIE
+              - SERIES
+              - DOCUMENTARY
+              - SHORT
+              - SPECIAL
+              - LIVE
+              - MINI_SERIES
+        - name: genre
+          in: query
+          description: ID de genre (séparé par virgule pour plusieurs genres)
+          schema:
+            type: string
+            example: genre_action,genre_thriller
+        - name: year
+          in: query
+          schema:
+            type: integer
+            example: 2024
+        - name: minYear
+          in: query
+          schema:
+            type: integer
+            example: 2020
+        - name: maxYear
+          in: query
+          schema:
+            type: integer
+        - name: isPrime
+          in: query
+          schema:
+            type: boolean
+        - name: hasHDR
+          in: query
+          schema:
+            type: boolean
+        - name: has4K
+          in: query
+          schema:
+            type: boolean
+        - name: hasDolbyAtmos
+          in: query
+          schema:
+            type: boolean
+        - name: minRating
+          in: query
+          schema:
+            type: number
+            minimum: 0
+            maximum: 5
+        - name: language
+          in: query
+          description: Code de langue audio disponible
+          schema:
+            type: string
+            example: fr
+        - name: country
+          in: query
+          description: Pays de production
+          schema:
+            type: string
+            example: US
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum:
+              - relevance
+              - newest
+              - oldest
+              - rating
+              - imdb_rating
+              - title_asc
+              - title_desc
+            default: relevance
+        - name: isNew
+          in: query
+          description: Uniquement les contenus ajoutés dans les 30 derniers jours
+          schema:
+            type: boolean
+        - name: isTrending
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Liste de contenus
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentList'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+  /catalog/{contentId}:
+    get:
+      tags:
+        - Catalog
+      summary: Récupérer le détail d'un contenu
+      operationId: getContent
+      description: |
+        Retourne la fiche complète d'un contenu (film, série, documentaire...).
+        **Contenu de la réponse :** - Titre, synopsis, année, durée, classification - Casting complet (acteurs, réalisateurs, scénaristes) - Galerie d'images (affiche, bannière, logo, backdrop) - URL de bande-annonce - Langues audio et sous-titres disponibles - Qualités vidéo (SD, HD, 4K HDR, Dolby Atmos) - Saisons et épisodes (pour les séries) - Tarification (inclus Prime / location / achat) - Prix et nominations aux récompenses - Contenus similaires recommandés
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/ContentIdParam'
+        - $ref: '#/components/parameters/AcceptLanguageParam'
+      responses:
+        '200':
+          description: Détail du contenu
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Content'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /catalog/{contentId}/similar:
+    get:
+      tags:
+        - Catalog
+      summary: Contenus similaires
+      operationId: getSimilarContent
+      description: |
+        Retourne des contenus similaires basés sur les genres, le casting, le style et les préférences des utilisateurs ayant regardé ce contenu. Équivalent de la section "Les spectateurs ont aussi aimé" sur Prime Video.
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/ContentIdParam'
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PageSizeParam'
+      responses:
+        '200':
+          description: Contenus similaires
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/getSimilarContent/responses/200'
+        '404':
+          $ref: '#/components/responses/NotFound'

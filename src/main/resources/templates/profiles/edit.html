@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Modifier le profil - Prime Video</title>
+    <link rel="stylesheet" th:href="@{/css/main.css}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .edit-page {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #0f1117;
+            padding: 20px;
+        }
+        .edit-card {
+            background: #1a1d24;
+            padding: 40px;
+            border-radius: 20px;
+            width: 100%;
+            max-width: 500px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+        }
+        .form-group { margin-bottom: 25px; }
+        .form-group label { display: block; margin-bottom: 10px; color: #adb5bd; font-size: 0.9rem; }
+        .form-input {
+            width: 100%;
+            padding: 12px;
+            background: #2a2d35;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 8px;
+            color: white;
+            font-size: 1rem;
+        }
+        .btn-save {
+            width: 100%;
+            padding: 15px;
+            background: #00A8E1;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .btn-save:hover { background: #008fbf; transform: translateY(-2px); }
+        .avatar-selection {
+            display: flex;
+            gap: 15px;
+            overflow-x: auto;
+            padding: 10px 0;
+            margin-bottom: 20px;
+        }
+        .avatar-opt {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 3px solid transparent;
+            transition: all 0.2s;
+        }
+        .avatar-opt.active { border-color: #00A8E1; transform: scale(1.1); }
+    </style>
+</head>
+<body class="edit-page">
+    <div class="edit-card">
+        <h1 style="margin-bottom: 30px;">Modifier le profil</h1>
+        
+        <form th:action="@{'/profiles/edit/' + ${profile.id}}" th:object="${profile}" method="post">
+            <div class="form-group">
+                <label>Nom du profil</label>
+                <input type="text" th:field="*{name}" class="form-input" required>
+            </div>
+
+            <div class="form-group">
+                <label>Catégorie d'âge (Restriction)</label>
+                <select th:field="*{ageRating}" class="form-input">
+                    <option value="ALL">Tout public (Aucun contenu déconseillé)</option>
+                    <option value="R_16">Déconseillé aux moins de 16 ans</option>
+                    <option value="R_18">Déconseillé aux moins de 18 ans</option>
+                    <option value="NONE">Aucune restriction (Accès total)</option>
+                </select>
+                <p style="font-size: 0.8rem; color: #6c757d; margin-top: 5px;">
+                    L'administrateur conserve un accès total même avec une restriction.
+                </p>
+            </div>
+
+            <div class="form-group">
+                <label>PIN de profil (4 chiffres, optionnel)</label>
+                <input type="password" th:field="*{pin}" class="form-input" maxlength="4" placeholder="Ex: 1234">
+            </div>
+
+            <div style="display: flex; gap: 15px;">
+                <button type="submit" class="btn-save">Enregistrer</button>
+                <a href="/profiles/select" style="flex: 1; text-align: center; padding: 15px; color: #adb5bd; text-decoration: none;">Annuler</a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Zone de suppression -->
+    <div style="margin-top: 30px; text-align: center;">
+        <form th:action="@{'/profiles/delete/' + ${profile.id}}" method="post" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer définitivement ce profil ? Cette action effacera également son historique et sa liste de lecture.');">
+            <button type="submit" style="background: none; border: none; color: #ff4757; font-weight: 600; cursor: pointer; text-decoration: underline; padding: 10px;">
+                <i class="fas fa-trash-alt" style="margin-right: 5px;"></i> Supprimer ce profil
+            </button>
+        </form>
+    </div>
+</body>
+</html>

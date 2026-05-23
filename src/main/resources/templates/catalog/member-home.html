@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <th:block th:replace="~{layout :: head-resources}"></th:block>
+    <title th:text="'Premium — ' + ${currentUser.fullName}">Premium Dashboard</title>
+    <style>
+        :root {
+            --sidebar-width: 80px;
+            --accent-main: #00A8E1;
+            --bg-deep: #05080d;
+            --card-radius: 16px;
+        }
+
+        body {
+            background: var(--bg-deep);
+            color: white;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            font-family: 'Outfit', sans-serif;
+            overflow-x: hidden;
+        }
+
+        /* ── SIDEBAR STYLE ── */
+        .member-sidebar {
+            width: var(--sidebar-width);
+            height: 100vh;
+            background: #090b13;
+            position: fixed;
+            left: 0;
+            top: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px 0;
+            z-index: 1000;
+            border-right: 1px solid rgba(255,255,255,0.02);
+        }
+
+        .sidebar-nav-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            width: 100%;
+        }
+
+        .sidebar-icon-link {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: rgba(255, 255, 255, 0.4);
+            text-decoration: none;
+            transition: all 0.3s;
+            border-radius: 10px;
+        }
+
+        .sidebar-icon-link.active {
+            background: rgba(255, 255, 255, 0.08);
+            color: white;
+        }
+
+        .sidebar-icon-link:hover {
+            color: white;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .sidebar-icon-link i { font-size: 1.15rem; }
+
+        /* ── MAIN AREA ── */
+        .member-main {
+            margin-left: var(--sidebar-width);
+            width: calc(100% - var(--sidebar-width));
+            min-height: 100vh;
+            padding: 40px 60px;
+        }
+
+        .dashboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 50px;
+        }
+
+        .welcome-text h1 { font-size: 2.5rem; font-weight: 800; margin: 0; }
+        .welcome-text p { opacity: 0.5; margin-top: 5px; font-size: 1.1rem; }
+
+        /* ── SUBSCRIPTION CARD ── */
+        .sub-management-card {
+            background: linear-gradient(135deg, #00A8E1 0%, #004e92 100%);
+            border-radius: 25px;
+            padding: 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 60px;
+            box-shadow: 0 30px 60px rgba(0, 168, 225, 0.15);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .sub-management-card::after {
+            content: '';
+            position: absolute;
+            right: -50px; top: -50px;
+            width: 250px; height: 250px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 50%;
+            filter: blur(50px);
+        }
+
+        .sub-info h2 { font-size: 2rem; font-weight: 900; margin: 0; }
+        .sub-info p { margin-top: 10px; opacity: 0.9; }
+
+        .btn-sub-action {
+            background: white;
+            color: #00A8E1;
+            padding: 16px 32px;
+            border-radius: 14px;
+            font-weight: 800;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: transform 0.3s;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+            z-index: 2;
+        }
+
+        .btn-sub-action:hover { transform: translateY(-5px); }
+
+        .gold-glow-btn {
+            background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%) !important;
+            color: black !important;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
+            animation: goldGlow 2s infinite alternate;
+            border: none;
+        }
+
+        @keyframes goldGlow {
+            from { box-shadow: 0 0 10px rgba(255, 215, 0, 0.4); }
+            to { box-shadow: 0 0 30px rgba(255, 215, 0, 0.8), 0 0 50px rgba(255, 215, 0, 0.4); }
+        }
+
+        /* ── SECTIONS ── */
+        .section-title-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+
+        .section-title-bar h3 { font-size: 1.5rem; font-weight: 700; margin: 0; }
+        .section-title-bar a { color: var(--accent-main); text-decoration: none; font-weight: 600; font-size: 0.9rem; }
+
+        .carousel-row {
+            display: flex;
+            gap: 20px;
+            overflow-x: auto;
+            padding-bottom: 30px;
+            scrollbar-width: none;
+        }
+
+        .carousel-row::-webkit-scrollbar { height: 0; display: none; }
+
+        /* ── NOTIFICATIONS DROPDOWN ── */
+        .notif-wrapper { position: relative; }
+        .notif-badge { position: absolute; top: -5px; right: -5px; background: #ff4757; color: white; width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.65rem; font-weight: 800; border: 2px solid var(--bg-deep); }
+        .notif-panel { position: absolute; top: 50px; right: 0; width: 350px; background: #1a1d24; border-radius: 20px; border: 1px solid rgba(255,255,255,0.08); box-shadow: 0 20px 50px rgba(0,0,0,0.5); z-index: 1000; display: none; overflow: hidden; }
+        .notif-header { padding: 20px; border-bottom: 1px solid rgba(255,255,255,0.08); display: flex; justify-content: space-between; align-items: center; }
+        .notif-item { padding: 20px; display: flex; gap: 15px; transition: 0.3s; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: pointer; text-decoration: none; color: white; }
+        .notif-item:hover { background: rgba(255,255,255,0.03); }
+        .notif-icon { width: 40px; height: 40px; border-radius: 10px; background: rgba(0,168,225,0.1); color: var(--accent-main); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; flex-shrink: 0; }
+        .notif-content h4 { margin: 0 0 5px 0; font-size: 0.9rem; }
+        .notif-content p { margin: 0; font-size: 0.8rem; opacity: 0.5; line-height: 1.4; }
+        .notif-time { font-size: 0.7rem; opacity: 0.3; margin-top: 5px; }
+
+        .content-card-minimal {
+            min-width: 240px;
+            height: 135px;
+            background: #1a1c23;
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 1px solid rgba(255,255,255,0.05);
+            display: flex;
+        }
+
+        .content-card-minimal a {
+            display: block;
+            width: 100%;
+            height: 100%;
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .content-card-minimal:hover {
+            transform: scale(1.05);
+            border-color: var(--accent-main);
+            box-shadow: 0 15px 30px rgba(0,0,0,0.5);
+        }
+
+        .content-card-minimal img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .card-overlay-text {
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            padding: 15px;
+            background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+    </style>
+</head>
+<body>
+
+    <!-- Sidebar with corrected links -->
+    <nav class="member-sidebar">
+        <div class="sidebar-nav-container">
+            <!-- Search -->
+            <a th:href="@{/search}" class="sidebar-icon-link" title="Recherche">
+                <i class="fas fa-search"></i>
+            </a>
+
+            <!-- Home -->
+            <a th:href="@{/home}" class="sidebar-icon-link active" title="Accueil">
+                <i class="fas fa-home"></i>
+            </a>
+
+            <!-- Shop / Catalog -->
+            <a th:href="@{/catalog}" class="sidebar-icon-link" title="Boutique">
+                <i class="fas fa-shopping-bag"></i>
+            </a>
+
+            <!-- TV/Direct Live -->
+            <a th:href="@{/catalog(type='LIVE')}" class="sidebar-icon-link" title="Direct">
+                <i class="fas fa-tv"></i>
+            </a>
+
+            <!-- Watchlist / Ma Liste -->
+            <a th:if="${session.selectedProfile != null}" 
+               th:href="@{'/profiles/' + ${session.selectedProfile.id} + '/watchlist'}" 
+               class="sidebar-icon-link" title="Ma Liste">
+                <i class="fas fa-play-circle"></i>
+            </a>
+
+            <!-- Security / Settings -->
+            <a th:href="@{/account/settings}" class="sidebar-icon-link" title="Sécurité & Compte">
+                <i class="fas fa-shield-alt"></i>
+            </a>
+
+            <!-- Devices -->
+            <a th:href="@{/account/devices}" class="sidebar-icon-link" title="Appareils">
+                <i class="fas fa-laptop-house"></i>
+            </a>
+            
+            <!-- Games -->
+            <a th:href="@{/games}" class="sidebar-icon-link" title="Jeux" style="color: #ffcc00;">
+                <i class="fas fa-gamepad"></i>
+            </a>
+        </div>
+
+        <div style="margin-top: auto;">
+            <!-- Profiles Management -->
+            <a th:href="@{/profiles/select}" class="sidebar-icon-link" title="Gérer les profils">
+                <i class="fas fa-users-cog"></i>
+            </a>
+        </div>
+    </nav>
+
+    <main class="member-main">
+        <div class="dashboard-header">
+            <div class="welcome-text">
+                <h1>Bonjour, <span th:text="${currentUser != null ? currentUser.fullName : 'Explorateur'}" style="color: var(--accent-main);">Prénom</span> !</h1>
+                <p>Heureux de vous revoir sur Prime Video.</p>
+            </div>
+            <div th:replace="~{layout :: profile-switcher}"></div>
+            
+            <div style="display: flex; align-items: center; gap: 20px;">
+                <!-- Notification Bell -->
+                <div class="notif-wrapper" th:if="${unreadNotifs != null}">
+                    <button onclick="toggleNotifPanel()" style="background: rgba(255,255,255,0.05); border: none; color: white; width: 45px; height: 45px; border-radius: 12px; cursor: pointer; position: relative;">
+                        <i class="fas fa-bell"></i>
+                        <div class="notif-badge" th:if="${!#lists.isEmpty(unreadNotifs)}" th:text="${#lists.size(unreadNotifs)}">0</div>
+                    </button>
+                    
+                    <div id="notifPanel" class="notif-panel">
+                        <div class="notif-header">
+                            <h3 style="margin:0; font-size: 1rem;">Notifications</h3>
+                            <span onclick="markAllRead()" style="font-size: 0.8rem; color: var(--accent-main); cursor: pointer;">Tout marquer lu</span>
+                        </div>
+                        <div class="notif-list">
+                            <!-- Loop through real notifications -->
+                            <div th:if="${#lists.isEmpty(unreadNotifs)}" style="padding: 40px 20px; text-align: center; opacity: 0.4;">
+                                <i class="fas fa-bell-slash" style="font-size: 2rem; margin-bottom: 10px; display: block;"></i>
+                                <p>Aucune nouvelle notification</p>
+                            </div>
+                            
+                            <a th:each="notif : ${unreadNotifs}" th:href="${notif.linkUrl ?: '#'}" class="notif-item">
+                                <div class="notif-icon">
+                                    <i th:class="${notif.type.name() == 'SUBSCRIPTION' ? 'fas fa-crown' : (notif.type.name() == 'REMINDER' ? 'fas fa-clock' : 'fas fa-info-circle')}"></i>
+                                </div>
+                                <div class="notif-content">
+                                    <h4 th:text="${notif.title}">Titre</h4>
+                                    <p th:text="${notif.message}">Message</p>
+                                    <div class="notif-time" th:text="${#temporals.format(notif.createdAt, 'dd MMM HH:mm')}">Date</div>
+                                </div>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Flash Messages -->
+        <div th:if="${successMsg}" class="alert alert-success" style="background: rgba(0, 255, 204, 0.1); border: 1px solid #00ffcc; color: #00ffcc; padding: 15px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0, 255, 204, 0.2);">
+            <i class="fas fa-check-circle"></i> <span th:text="${successMsg}"></span>
+        </div>
+        <div th:if="${errorMsg}" class="alert alert-error" style="background: rgba(255, 71, 87, 0.1); border: 1px solid #ff4757; color: #ff4757; padding: 15px; border-radius: 12px; margin-bottom: 20px;">
+            <i class="fas fa-exclamation-circle"></i> <span th:text="${errorMsg}"></span>
+        </div>
+
+        <!-- Subscription Management Section -->
+        <section class="sub-management-card">
+            <div class="sub-info">
+                <h2 th:if="${subscription != null}">Abonnement <span th:text="${subscription.plan.name}">Actif</span></h2>
+                <h2 th:unless="${subscription != null}">Abonnement non activé</h2>
+                <p th:if="${subscription != null}">
+                    Statut : <strong th:text="${subscription.status}">ACTIVE</strong> • 
+                    Expire le <span th:text="${#temporals.format(subscription.currentPeriodEnd, 'dd MMM yyyy')}">12 Juin 2025</span>
+                </p>
+                <p th:unless="${subscription != null}">Inscrivez-vous pour accéder aux exclusivités Prime.</p>
+                <div th:if="${currentUser != null and currentUser.loyaltyPoints > 0}" style="margin-top: 15px; background: rgba(255,255,255,0.1); display: inline-flex; align-items: center; gap: 8px; padding: 5px 15px; border-radius: 20px; font-size: 0.9rem;">
+                    <i class="fas fa-gem" style="color: #ffcc00;"></i>
+                    <span th:text="${currentUser.loyaltyPoints + ' Points Fidélité'}">0 Points</span>
+                </div>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                <!-- Si actif, on propose de gérer/renouveler -->
+                <a th:if="${subscription != null}" th:href="@{/subscriptions/current}" class="btn-sub-action">
+                    <i class="fas fa-sync-alt"></i>
+                    <span>Gérer mon offre</span>
+                </a>
+                <!-- Si expiré ou inexistant, on propose d'activer -->
+                <a th:if="${subscription == null}" th:href="@{/subscriptions/plans}" class="btn-sub-action gold-glow-btn">
+                    <i class="fas fa-crown"></i>
+                    <span>Activer Prime</span>
+                </a>
+                <!-- Bouton Renouveler Anticipé (Fidélité) -->
+                <form th:if="${subscription != null}" th:action="@{/transfer/subscription/renew}" method="POST" style="margin: 0;">
+                    <button type="submit" class="btn-sub-action" style="width: 100%; background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3);">
+                        <i class="fas fa-history"></i>
+                        <span>Renouveler (+Points)</span>
+                    </button>
+                </form>
+            </div>
+        </section>
+
+        <!-- Dynamic Sections -->
+        <div class="content-sections">
+            
+            <!-- Watchlist -->
+            <section th:if="${watchlist != null and not #lists.isEmpty(watchlist)}">
+                <div class="section-title-bar">
+                    <h3>Ma Liste</h3>
+                    <a th:href="@{'/profiles/' + ${session.selectedProfile.id} + '/watchlist'}">Tout voir</a>
+                </div>
+                <div class="carousel-row">
+                    <div th:each="item : ${watchlist}" class="content-card-minimal">
+                        <a th:href="@{/catalog/{id}(id=${item.content.id})}">
+                            <img th:src="${item.content.bannerUrl ?: item.content.posterUrl}" loading="lazy">
+                            <div class="card-overlay-text" th:text="${item.content.title}">Titre</div>
+                        </a>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Trending -->
+            <section th:if="${trending != null and not #lists.isEmpty(trending)}">
+                <div class="section-title-bar">
+                    <h3>Les Tendances</h3>
+                    <a th:href="@{/catalog}">Explorer</a>
+                </div>
+                <div class="carousel-row">
+                    <div th:each="content : ${trending}" class="content-card-minimal">
+                        <a th:href="@{/catalog/{id}(id=${content.id})}">
+                            <img th:src="${content.bannerUrl ?: content.posterUrl}" loading="lazy">
+                            <div class="card-overlay-text" th:text="${content.title}">Titre</div>
+                        </a>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Quick Browse Genres -->
+            <section>
+                <div class="section-title-bar">
+                    <h3>Genres Populaires</h3>
+                </div>
+                <div class="carousel-row">
+                    <a th:href="@{/catalog(type='AFRICAIN')}" class="content-card-minimal" style="text-decoration:none; color:white; background: linear-gradient(45deg, #1a2a6c, #b21f1f); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.2rem;">
+                        AFRICAIN
+                    </a>
+                    <a th:href="@{/catalog(type='ANIME')}" class="content-card-minimal" style="text-decoration:none; color:white; background: linear-gradient(45deg, #23074d, #cc5333); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.2rem;">
+                        ANIMÉ
+                    </a>
+                    <a th:href="@{/catalog(type='SERIE')}" class="content-card-minimal" style="text-decoration:none; color:white; background: linear-gradient(45deg, #0f2027, #203a43); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.2rem;">
+                        SÉRIES
+                    </a>
+                    <a th:href="@{/catalog(type='FILM')}" class="content-card-minimal" style="text-decoration:none; color:white; background: linear-gradient(45deg, #4b6cb7, #182848); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.2rem;">
+                        FILMS
+                    </a>
+                </div>
+            </section>
+
+        </div>
+    </main>
+
+    <th:block th:replace="~{layout :: footer-scripts}"></th:block>
+    
+    <script>
+        function toggleNotifPanel() {
+            const panel = document.getElementById('notifPanel');
+            panel.style.display = (panel.style.display === 'block') ? 'none' : 'block';
+        }
+
+        // Fermer le panel en cliquant ailleurs
+        window.onclick = function(event) {
+            if (!event.target.closest('.notif-wrapper')) {
+                const panel = document.getElementById('notifPanel');
+                if (panel) panel.style.display = 'none';
+            }
+        }
+
+        async function markAllRead() {
+            try {
+                const response = await fetch('/api/notifications/mark-all-read', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="_csrf"]')?.content
+                    }
+                });
+                if (response.ok) {
+                    const badge = document.querySelector('.notif-badge');
+                    if (badge) badge.remove();
+                    document.querySelector('.notif-list').innerHTML = `
+                        <div style="padding: 40px 20px; text-align: center; opacity: 0.4;">
+                            <i class="fas fa-bell-slash" style="font-size: 2rem; margin-bottom: 10px; display: block;"></i>
+                            <p>Aucune nouvelle notification</p>
+                        </div>
+                    `;
+                }
+            } catch (err) {
+                console.error("Erreur marquage lu:", err);
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,196 @@
+<<<<<<< HEAD
+=======
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Editer Contenu — Admin Prime Video</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #00A8E1;
+            --bg: #05070a;
+            --card-bg: rgba(255, 255, 255, 0.03);
+            --border: rgba(255, 255, 255, 0.1);
+            --text-main: #ffffff;
+            --text-muted: #718096;
+        }
+        body { background: var(--bg); color: var(--text-main); font-family: 'Outfit', sans-serif; margin: 0; padding: 60px 20px; display: flex; justify-content: center; }
+        .form-container { max-width: 900px; width: 100%; }
+        .form-card { background: var(--card-bg); padding: 50px; border-radius: 30px; border: 1px solid var(--border); backdrop-filter: blur(30px); box-shadow: 0 40px 100px rgba(0,0,0,0.5); }
+        h1 { font-size: 2.2rem; font-weight: 900; margin-bottom: 40px; background: linear-gradient(135deg, #fff, #888); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        
+        .form-group { margin-bottom: 25px; }
+        label { display: block; font-size: 0.85rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
+        input, select, textarea { width: 100%; padding: 15px; background: rgba(255,255,255,0.05); border: 1px solid var(--border); border-radius: 12px; color: white; font-size: 1rem; font-family: inherit; transition: 0.3s; box-sizing: border-box; }
+        input:focus, select:focus, textarea:focus { border-color: var(--primary); outline: none; background: rgba(255,255,255,0.08); }
+        select option { background-color: var(--bg); color: var(--text-main); }
+        
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 25px; }
+        .btn-submit { background: var(--primary); color: white; border: none; padding: 18px 40px; border-radius: 15px; font-size: 1.1rem; font-weight: 800; cursor: pointer; transition: 0.3s; width: 100%; margin-top: 20px; box-shadow: 0 10px 25px rgba(0, 168, 225, 0.4); }
+        .btn-submit:hover { transform: translateY(-3px); box-shadow: 0 15px 35px rgba(0, 168, 225, 0.6); }
+        .back-link { display: inline-flex; align-items: center; gap: 10px; color: var(--text-muted); text-decoration: none; margin-bottom: 30px; font-weight: 600; transition: 0.2s; }
+        .back-link:hover { color: white; }
+
+        @media (max-width: 768px) {
+            body { padding: 30px 15px; }
+            .form-card { padding: 30px 20px; }
+            .grid-2 { grid-template-columns: 1fr; gap: 10px; }
+            h1 { font-size: 1.6rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="form-container">
+        <a th:href="@{/admin/catalog}" class="back-link"><i class="fas fa-arrow-left"></i> Retour au catalogue</a>
+        
+        <div class="form-card">
+            <h1>Configuration du Média</h1>
+            
+            <form th:action="@{/admin/catalog/save}" th:object="${contentRequest}" method="POST" enctype="multipart/form-data">
+                <input type="hidden" th:field="*{id}">
+                
+                <div th:if="${#fields.hasAnyErrors()}" style="background: rgba(255, 0, 0, 0.1); border: 1px solid red; padding: 15px; border-radius: 10px; margin-bottom: 20px; color: #ff4d4d;">
+                    <p style="margin: 0; font-weight: bold;">Erreur de validation :</p>
+                    <ul style="margin: 5px 0 0 20px;">
+                        <li th:each="err : ${#fields.detailedErrors()}" th:text="${err.message}"></li>
+                    </ul>
+                </div>
+                
+                <div class="form-group">
+                    <label>Titre de l'œuvre</label>
+                    <input type="text" th:field="*{title}" placeholder="Entrez le titre officiel..." required>
+                </div>
+
+                <div class="form-group">
+                    <label>Synopsis / Description</label>
+                    <textarea th:field="*{description}" rows="4" placeholder="Racontez l'histoire..."></textarea>
+                </div>
+
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label>Catégorie</label>
+                        <select th:field="*{type}">
+                            <option th:each="t : ${types}" th:value="${t}" th:text="${t}">FILM</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Genre Principal</label>
+                        <select th:field="*{genre}">
+                            <option th:each="g : ${genres}" th:value="${g}" th:text="${g}">ACTION</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label>Image du Poster (Vertical)</label>
+                        <input type="file" th:field="*{posterFile}" accept="image/*" style="margin-bottom: 10px;">
+                        <input type="text" th:field="*{posterUrl}" placeholder="Ou lien direct vers l'image 2:3">
+                    </div>
+                    <div class="form-group">
+                        <label>Image de la Bannière (Horizontal)</label>
+                        <input type="file" th:field="*{bannerFile}" accept="image/*" style="margin-bottom: 10px;">
+                        <input type="text" th:field="*{bannerUrl}" placeholder="Ou lien direct vers l'image 16:9">
+                    </div>
+                </div>
+
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label>Source Vidéo (MP4/HLS)</label>
+                        <input type="file" th:field="*{videoFile}" accept="video/*" style="margin-bottom: 10px;">
+                        <input type="text" th:field="*{videoUrl}" placeholder="Ou lien direct (ex: /media/film.mp4)">
+                    </div>
+                    <div class="form-group">
+                        <label>Trailer (YouTube/Vimeo)</label>
+                        <input type="text" th:field="*{trailerUrl}" placeholder="Lien de la bande-annonce">
+                    </div>
+                </div>
+
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label>Année</label>
+                        <input type="number" th:field="*{year}" placeholder="Ex: 2024">
+                    </div>
+                    <div class="form-group">
+                        <label>Âge Minimum</label>
+                        <input type="number" th:field="*{ageRating}" placeholder="Ex: 13">
+                    </div>
+                </div>
+
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label>Note / Étoiles (sur 10)</label>
+                        <input type="number" step="0.1" min="0" max="10" th:field="*{ratingAverage}" placeholder="Ex: 8.5">
+                    </div>
+                    <div class="form-group">
+                        <!-- Espace vide pour l'alignement -->
+                    </div>
+                </div>
+
+                <div class="grid-2" id="duration-fields" style="display: none;">
+                    <div class="form-group">
+                        <label>Durée (Heures)</label>
+                        <input type="number" th:field="*{durationHours}" placeholder="Ex: 2" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Durée (Minutes)</label>
+                        <input type="number" th:field="*{durationMinutes}" placeholder="Ex: 15" min="0" max="59">
+                    </div>
+                </div>
+
+                <div class="grid-2" id="episode-fields" style="display: none;">
+                    <div class="form-group">
+                        <label>Nombre d'Épisodes Total</label>
+                        <input type="number" th:field="*{episodeCount}" placeholder="Ex: 12 ou 24" min="1">
+                        <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 5px;">
+                            Crée la structure de la saison avec des épisodes vides.
+                        </p>
+                    </div>
+                    <div class="form-group">
+                        <label>Associer la vidéo à l'épisode N°</label>
+                        <input type="number" th:field="*{uploadedEpisodeNumber}" placeholder="Ex: 1 (Laissez vide pour lier au contenu principal)" min="1">
+                        <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 5px;">
+                            La vidéo uploadée plus haut sera affectée à cet épisode spécifique.
+                        </p>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 40px; margin: 30px 0; background: rgba(255,255,255,0.02); padding: 20px; border-radius: 15px;">
+                    <label style="display: flex; align-items: center; gap: 12px; cursor: pointer; margin: 0;">
+                        <input type="checkbox" th:field="*{isPremium}" style="width: 20px; height: 20px; margin: 0;"> 
+                        <span style="color: white; font-size: 0.95rem;">Contenu Premium (Abonnement requis)</span>
+                    </label>
+                </div>
+
+                <button type="submit" class="btn-submit">Valider et Publier</button>
+            </form>
+        </div>
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const typeSelect = document.getElementById('type');
+            const durationFields = document.getElementById('duration-fields');
+            const episodeFields = document.getElementById('episode-fields');
+
+            function toggleFields() {
+                const type = typeSelect.value;
+                // La durée est nécessaire pour TOUT (soit la durée du film, soit la durée de l'épisode uploadé)
+                durationFields.style.display = 'grid';
+                
+                if (type === 'FILM' || type === 'DOCUMENTAIRE' || type === 'AFRICAIN') {
+                    episodeFields.style.display = 'none';
+                } else if (type === 'SERIE' || type === 'ANIME' || type === 'KDRAMA') {
+                    episodeFields.style.display = 'grid';
+                } else {
+                    episodeFields.style.display = 'none';
+                }
+            }
+
+            typeSelect.addEventListener('change', toggleFields);
+            toggleFields(); // Initial check
+        });
+    </script>
+</body>
+</html>
+>>>>>>> f85e8d9 (Projet PrimeVideo complet)

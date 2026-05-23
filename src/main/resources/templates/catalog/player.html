@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${content.title} + ' - Lecture'">Lecture</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-bg: #000000;
+            --text-main: #FFFFFF;
+            --accent: #00A8E1;
+            --overlay: rgba(0, 0, 0, 0.7);
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--primary-bg);
+            font-family: 'Inter', sans-serif;
+            color: var(--text-main);
+            overflow: hidden;
+        }
+
+        .player-container {
+            position: relative;
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #000;
+        }
+
+        video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        /* Overlay UI */
+        .player-ui {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, transparent 20%, transparent 80%, rgba(0,0,0,0.8) 100%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: 10;
+        }
+
+        .player-container:hover .player-ui, .player-ui.active {
+            opacity: 1;
+        }
+
+        .top-bar {
+            display: flex;
+            align-items: center;
+            padding: 2rem;
+        }
+
+        .back-btn {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+            margin-right: 20px;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            transition: background 0.2s;
+        }
+
+        .back-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .movie-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .movie-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin: 0;
+        }
+
+        .skip-intro {
+            position: absolute;
+            bottom: 120px;
+            right: 40px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 4px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            backdrop-filter: blur(5px);
+            transition: all 0.2s ease;
+        }
+
+        .skip-intro:hover {
+            background: white;
+            color: black;
+            transform: scale(1.05);
+        }
+
+        .controls-bar {
+            padding: 2rem;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .control-btn {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.8rem;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .control-btn:hover {
+            transform: scale(1.2);
+        }
+
+        .progress-container {
+            flex-grow: 1;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .time-display {
+            font-size: 0.9rem;
+            font-weight: 500;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .progress-bar {
+            flex-grow: 1;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 3px;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .progress-fill {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            background: var(--accent);
+            border-radius: 3px;
+            width: 0%;
+        }
+
+        .progress-dot {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            right: -6px;
+            width: 12px;
+            height: 12px;
+            background: white;
+            border-radius: 50%;
+            box-shadow: 0 0 5px rgba(0,0,0,0.5);
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .progress-bar:hover .progress-dot {
+            opacity: 1;
+        }
+
+        /* ── LIVE INDICATOR ───────────────────────────────────── */
+        .live-badge {
+            background: #ff0000;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-left: 15px;
+            animation: pulse-red 2s infinite;
+        }
+
+        .live-dot {
+            width: 8px;
+            height: 8px;
+            background: white;
+            border-radius: 50%;
+        }
+
+        @keyframes pulse-red {
+            0% { box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(255, 0, 0, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 0, 0, 0); }
+        }
+
+        /* ── RESPONSIVE PLAYER ────────────────────────────────── */
+        @media (max-width: 768px) {
+            .top-bar { padding: 1rem; }
+            .back-btn { width: 40px; height: 40px; font-size: 1.2rem; margin-right: 10px; }
+            .movie-title { font-size: 1.1rem; }
+            
+            .controls-bar { padding: 1rem; gap: 10px; }
+            .control-btn { font-size: 1.4rem; }
+            
+            .time-display { font-size: 0.7rem; }
+            .progress-bar { height: 10px; } /* Plus épais pour le tactile */
+            
+            .skip-intro { bottom: 80px; right: 20px; font-size: 0.8rem; padding: 8px 15px; }
+            
+            /* Cacher certains boutons secondaires sur mobile pour épurer */
+            #rewindBtn, #forwardBtn { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="player-container" id="playerContainer">
+        <!-- Overlay de chargement -->
+        <div id="loadingOverlay" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: black; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 20;">
+            <div class="loader" style="width: 50px; height: 50px; border: 5px solid rgba(255,255,255,0.1); border-top: 5px solid var(--accent); border-radius: 50%; animation: spin 1s linear infinite;"></div>
+            <p style="margin-top: 20px; font-weight: 500;">Chargement du flux...</p>
+        </div>
+
+        <!-- Message d'erreur -->
+        <div id="errorOverlay" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 30; text-align: center; padding: 20px;">
+            <i class="fas fa-exclamation-triangle" style="font-size: 4rem; color: #ff4757; margin-bottom: 20px;"></i>
+            <h2 style="margin-bottom: 10px;">Impossible de lire la vidéo</h2>
+            <p style="color: rgba(255,255,255,0.7); max-width: 500px; margin-bottom: 30px;">
+                Le lien de la vidéo est introuvable ou le format n'est pas supporté par votre navigateur.<br>
+                <small style="display: block; margin-top: 10px; color: #ffcc00;">Note : Les fichiers .avi et .mkv ne sont pas supportés nativement par la plupart des navigateurs. Privilégiez le format .mp4.</small>
+                <code id="debugUrl" style="display: block; margin-top: 20px; background: rgba(0,0,0,0.5); padding: 5px; font-size: 0.8rem; word-break: break-all;">Source : Chargement...</code>
+            </p>
+            <div style="display: flex; gap: 15px;">
+                <a th:href="@{/catalog/{id}(id=${content.id})}" class="btn-secondary" style="background: rgba(255,255,255,0.1); color: white; padding: 12px 30px; border-radius: 5px; text-decoration: none;">Retour</a>
+                <a th:href="${content.videoUrl}" th:download="${content.title}" class="btn-primary" style="background: var(--accent); color: white; padding: 12px 30px; border-radius: 5px; text-decoration: none;">
+                    <i class="fas fa-download"></i> Télécharger pour lire avec VLC
+                </a>
+            </div>
+        </div>
+
+        <!-- Vidéo dynamique -->
+        <video id="videoPlayer" 
+               th:with="rawUrl=${selectedEpisode != null ? selectedEpisode.videoUrl : (content.videoUrl != null ? content.videoUrl : 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4')}"
+               th:src="${#strings.replace(#strings.replace(rawUrl, '[', '%5B'), ']', '%5D')}" 
+               playsinline preload="auto" style="z-index: 1;">
+            <track id="frTrack" kind="subtitles" srclang="fr" label="Français" th:src="@{/media/subtitles_fr.vtt}">
+        </video>
+
+        <div class="player-ui" id="playerUI">
+            <!-- ... (Reste du UI identique) -->
+            <div class="top-bar">
+                <a th:href="@{/catalog/{id}(id=${content.id})}" class="back-btn">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+                <div class="movie-info">
+                    <h1 class="movie-title">
+                        <span th:text="${content.title}">Titre du film</span>
+                        <span th:if="${content.type.name() == 'LIVE'}" class="live-badge">
+                            <div class="live-dot"></div> EN DIRECT
+                        </span>
+                    </h1>
+                    <p th:if="${selectedEpisode}" style="margin: 5px 0 0; opacity: 0.7; font-size: 1rem;" 
+                       th:text="'Épisode ' + ${selectedEpisode.episodeNumber} + ' : ' + ${selectedEpisode.title}"></p>
+                </div>
+            </div>
+
+            <div style="position: absolute; bottom: 120px; right: 40px; display: flex; flex-direction: column; gap: 15px; align-items: flex-end;">
+                <button class="skip-intro" id="skipIntroBtn" style="display: none; position: static;">Passer l'intro</button>
+                <a th:if="${nextEpisodeId}" 
+                   th:href="@{'/watch/' + ${content.id} + '?episode=' + ${nextEpisodeId}}" 
+                   style="background: white; color: black; padding: 12px 25px; border-radius: 4px; text-decoration: none; font-weight: 700; display: flex; align-items: center; gap: 10px;">
+                    Épisode Suivant <i class="fas fa-step-forward"></i>
+                </a>
+            </div>
+
+            <div class="controls-bar">
+                <button class="control-btn" id="playPauseBtn">
+                    <i class="fas fa-play"></i>
+                </button>
+                <button class="control-btn" id="rewindBtn" style="position: relative;">
+                    <i class="fas fa-undo"></i>
+                    <span style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 0.6rem; font-weight: bold; margin-top: 1px;">10</span>
+                </button>
+                <button class="control-btn" id="forwardBtn" style="position: relative;">
+                    <i class="fas fa-redo"></i>
+                    <span style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 0.6rem; font-weight: bold; margin-top: 1px;">10</span>
+                </button>
+                <button class="control-btn" id="nextEpisodeBtn" th:if="${nextEpisodeId != null}" th:onclick="'window.location.href=\'/watch/' + ${content.id} + '?episode=' + ${nextEpisodeId} + '\''" title="Épisode Suivant">
+                    <i class="fas fa-step-forward"></i>
+                </button>
+
+                <div class="progress-container" id="progressContainer">
+                    <span class="time-display" id="currentTime">00:00</span>
+                    <div class="progress-bar" id="progressBar">
+                        <div class="progress-fill" id="progressFill">
+                            <div class="progress-dot"></div>
+                        </div>
+                    </div>
+                    <span class="time-display" id="durationTime">00:00</span>
+                </div>
+                
+                <div id="liveIndicator" style="display: none; flex: 1; align-items: center; justify-content: center; color: #ff0000; font-weight: 700; gap: 8px;">
+                    <div class="live-dot" style="background: #ff0000;"></div> EN DIRECT
+                </div>
+
+                <div class="player-controls-right" style="display: flex; gap: 15px; align-items: center;">
+                    <button class="control-btn" id="qualityBtn" title="Qualité">
+                        <i class="fas fa-sliders-h"></i>
+                    </button>
+                    <button class="control-btn" id="ccBtn" title="Sous-titres">
+                        <i class="fas fa-closed-captioning"></i>
+                    </button>
+                    <button class="control-btn" id="audioOnlyBtn" title="Audio Seulement">
+                        <i class="fas fa-headphones"></i>
+                    </button>
+                    <div style="display: flex; align-items: center; gap: 5px;">
+                        <button class="control-btn" id="muteBtn" style="margin-right: 0;">
+                            <i class="fas fa-volume-up"></i>
+                        </button>
+                        <input type="range" id="volumeSlider" min="0" max="1" step="0.05" value="1" style="width: 60px; cursor: pointer; accent-color: var(--accent);">
+                    </div>
+                    <button class="control-btn" id="fullscreenBtn">
+                        <i class="fas fa-expand"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Menu Qualité -->
+        <div id="qualityMenu" style="position: absolute; bottom: 100px; right: 200px; background: rgba(0,0,0,0.95); border: 1px solid rgba(255,255,255,0.2); border-radius: 12px; display: none; flex-direction: column; padding: 15px; z-index: 100; box-shadow: 0 10px 40px rgba(0,0,0,0.8); width: 180px;">
+            <p style="margin: 0 0 10px 10px; font-size: 0.8rem; color: rgba(255,255,255,0.4); font-weight: 700; text-transform: uppercase;">Qualité Vidéo</p>
+            <button onclick="setQuality('4K')" style="background: none; border: none; color: white; padding: 10px 15px; text-align: left; cursor: pointer; border-radius: 6px; font-weight: 600;">4K Ultra HD</button>
+            <button onclick="setQuality('2K')" style="background: none; border: none; color: white; padding: 10px 15px; text-align: left; cursor: pointer; border-radius: 6px; font-weight: 600;">2K Quad HD</button>
+            <button onclick="setQuality('1080p')" style="background: none; border: none; color: white; padding: 10px 15px; text-align: left; cursor: pointer; border-radius: 6px; font-weight: 600;">1080p (FHD)</button>
+            <button onclick="setQuality('780p')" style="background: none; border: none; color: white; padding: 10px 15px; text-align: left; cursor: pointer; border-radius: 6px; font-weight: 600;">780p (HD)</button>
+            <button onclick="setQuality('480p')" style="background: none; border: none; color: white; padding: 10px 15px; text-align: left; cursor: pointer; border-radius: 6px; font-weight: 600;">480p (SD)</button>
+            <button onclick="setQuality('360p')" style="background: none; border: none; color: white; padding: 10px 15px; text-align: left; cursor: pointer; border-radius: 6px; font-weight: 600;">360p</button>
+            <button onclick="setQuality('240p')" style="background: none; border: none; color: white; padding: 10px 15px; text-align: left; cursor: pointer; border-radius: 6px; font-weight: 600;">240p</button>
+            <button onclick="setQuality('144p')" style="background: none; border: none; color: white; padding: 10px 15px; text-align: left; cursor: pointer; border-radius: 6px; font-weight: 600;">144p</button>
+        </div>
+
+        <!-- Overlay Audio Seulement -->
+        <div id="audioOnlyOverlay" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: radial-gradient(circle, #1a1d24 0%, #000000 100%); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 5;">
+            <img th:src="${content.posterUrl}" style="width: 300px; height: 450px; object-fit: cover; border-radius: 15px; box-shadow: 0 20px 50px rgba(0,0,0,0.8); margin-bottom: 30px;" alt="Poster">
+            <h2 th:text="${content.title}">Titre</h2>
+            <p style="color: var(--accent); font-weight: 700;">MODE AUDIO UNIQUEMENT ACTIVÉ</p>
+            <div class="audio-waves" style="display: flex; gap: 5px; height: 30px; align-items: flex-end; margin-top: 20px;">
+                <div style="width: 4px; height: 100%; background: var(--accent); animation: wave 1s infinite alternate;"></div>
+                <div style="width: 4px; height: 60%; background: var(--accent); animation: wave 1s 0.2s infinite alternate;"></div>
+                <div style="width: 4px; height: 80%; background: var(--accent); animation: wave 1s 0.4s infinite alternate;"></div>
+                <div style="width: 4px; height: 100%; background: var(--accent); animation: wave 1s 0.1s infinite alternate;"></div>
+            </div>
+        </div>
+        
+        <!-- Résumé Prompt Overlay -->
+        <div id="resumeOverlay" th:if="${playbackHistory != null and playbackHistory.progressSeconds > 0}" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 50;">
+            <h2 style="margin-bottom: 20px; font-size: 2rem;">Reprendre la lecture ?</h2>
+            <div style="display: flex; gap: 20px;">
+                <button onclick="resumePlayback()" style="padding: 12px 30px; border-radius: 8px; background: var(--accent); color: white; border: none; font-size: 1.1rem; font-weight: 700; cursor: pointer; transition: transform 0.2s;">
+                    Reprendre (<span th:text="${playbackHistory.progressSeconds / 60}">0</span> min)
+                </button>
+                <button onclick="startOver()" style="padding: 12px 30px; border-radius: 8px; background: rgba(255,255,255,0.2); color: white; border: 1px solid white; font-size: 1.1rem; font-weight: 700; cursor: pointer; transition: transform 0.2s;">
+                    Recommencer
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+
+    <script th:inline="javascript">
+        const video = document.getElementById('videoPlayer');
+        const playPauseBtn = document.getElementById('playPauseBtn');
+        const muteBtn = document.getElementById('muteBtn');
+        const volumeSlider = document.getElementById('volumeSlider');
+        const fullscreenBtn = document.getElementById('fullscreenBtn');
+        const progressBar = document.getElementById('progressBar');
+        const progressFill = document.getElementById('progressFill');
+        const currentTimeEl = document.getElementById('currentTime');
+        const durationTimeEl = document.getElementById('durationTime');
+        const playerContainer = document.getElementById('playerContainer');
+        const playerUI = document.getElementById('playerUI');
+        const skipIntroBtn = document.getElementById('skipIntroBtn');
+        const rewindBtn = document.getElementById('rewindBtn');
+        const forwardBtn = document.getElementById('forwardBtn');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const errorOverlay = document.getElementById('errorOverlay');
+        const progressContainer = document.getElementById('progressContainer');
+        const liveIndicator = document.getElementById('liveIndicator');
+        const qualityBtn = document.getElementById('qualityBtn');
+        const qualityMenu = document.getElementById('qualityMenu');
+        const ccBtn = document.getElementById('ccBtn');
+        const audioOnlyBtn = document.getElementById('audioOnlyBtn');
+        const audioOnlyOverlay = document.getElementById('audioOnlyOverlay');
+
+        const isLive = /*[[${content.type.name() == 'LIVE'}]]*/ false;
+
+        if (isLive) {
+            progressContainer.style.display = 'none';
+            liveIndicator.style.display = 'flex';
+            rewindBtn.style.display = 'none';
+            forwardBtn.style.display = 'none';
+        }
+
+        let hideUITimeout;
+
+        function formatTime(seconds) {
+            if (isNaN(seconds)) return "00:00";
+            const h = Math.floor(seconds / 3600);
+            const m = Math.floor((seconds % 3600) / 60);
+            const s = Math.floor(seconds % 60);
+            if (h > 0) return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+            return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+        }
+
+        async function togglePlay() {
+            try {
+                if (video.paused) {
+                    const playPromise = video.play();
+                    if (playPromise !== undefined) {
+                        await playPromise;
+                    }
+                    playPauseBtn.innerHTML = '<i class="fas fa-pause"></i>';
+                } else {
+                    video.pause();
+                    playPauseBtn.innerHTML = '<i class="fas fa-play"></i>';
+                    showUI();
+                }
+            } catch (error) {
+                console.error("Play error:", error);
+            }
+        }
+
+        const resumeOverlay = document.getElementById('resumeOverlay');
+        const resumeTime = /*[[${playbackHistory != null ? playbackHistory.progressSeconds : 0}]]*/ 0;
+
+        function resumePlayback() {
+            if (resumeOverlay) resumeOverlay.style.display = 'none';
+            video.currentTime = resumeTime;
+            togglePlay();
+        }
+
+        function startOver() {
+            if (resumeOverlay) resumeOverlay.style.display = 'none';
+            video.currentTime = 0;
+            togglePlay();
+        }
+
+        function toggleMute() {
+            video.muted = !video.muted;
+            if(video.muted) {
+                volumeSlider.value = 0;
+            } else {
+                volumeSlider.value = video.volume > 0 ? video.volume : 1;
+            }
+            updateVolumeIcon();
+        }
+
+        function updateVolumeIcon() {
+            if (video.muted || video.volume === 0) {
+                muteBtn.innerHTML = '<i class="fas fa-volume-mute"></i>';
+            } else if (video.volume < 0.5) {
+                muteBtn.innerHTML = '<i class="fas fa-volume-down"></i>';
+            } else {
+                muteBtn.innerHTML = '<i class="fas fa-volume-up"></i>';
+            }
+        }
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                playerContainer.requestFullscreen().catch(err => {
+                    console.log(`Error attempting to enable full-screen mode: ${err.message}`);
+                });
+                fullscreenBtn.innerHTML = '<i class="fas fa-compress"></i>';
+            } else {
+                document.exitFullscreen();
+                fullscreenBtn.innerHTML = '<i class="fas fa-expand"></i>';
+            }
+        }
+
+        function updateProgress() {
+            if (video.duration) {
+                const percent = (video.currentTime / video.duration) * 100;
+                progressFill.style.width = `${percent}%`;
+                currentTimeEl.textContent = formatTime(video.currentTime);
+                
+                if (video.currentTime > 5 && video.currentTime < 15) {
+                    skipIntroBtn.style.display = 'block';
+                } else {
+                    skipIntroBtn.style.display = 'none';
+                }
+            }
+        }
+
+        function setProgress(e) {
+            const rect = progressBar.getBoundingClientRect();
+            const pos = (e.clientX - rect.left) / rect.width;
+            video.currentTime = pos * video.duration;
+        }
+
+        function showUI() {
+            playerUI.classList.add('active');
+            clearTimeout(hideUITimeout);
+            if (!video.paused) {
+                hideUITimeout = setTimeout(() => {
+                    playerUI.classList.remove('active');
+                }, 3000);
+            }
+        }
+
+        // Événements Vidéo
+        video.addEventListener('canplay', () => {
+            console.log('Flux prêt. Source :', video.src);
+            loadingOverlay.style.display = 'none';
+            durationTimeEl.textContent = formatTime(video.duration);
+        });
+
+        let waitingTimeout;
+        video.addEventListener('waiting', () => {
+            waitingTimeout = setTimeout(() => {
+                loadingOverlay.style.display = 'flex';
+            }, 500); // Wait 500ms before showing loading to avoid flicker
+        });
+
+        video.addEventListener('playing', () => {
+            clearTimeout(waitingTimeout);
+            loadingOverlay.style.display = 'none';
+        });
+
+        // Failsafe : masquer le chargement après 4 secondes quoi qu'il arrive
+        setInterval(() => {
+            if (loadingOverlay.style.display !== 'none' && !video.paused && video.readyState >= 3) {
+                console.warn("⚠️ Failsafe : Masquage forcé de l'overlay de chargement");
+                loadingOverlay.style.display = 'none';
+            }
+        }, 4000);
+
+        video.addEventListener('error', () => {
+            console.error('Erreur de lecture. Source :', video.src);
+            document.getElementById('debugUrl').textContent = 'Source : ' + video.src;
+            loadingOverlay.style.display = 'none';
+            errorOverlay.style.display = 'flex';
+        });
+
+        video.addEventListener('timeupdate', updateProgress);
+        video.addEventListener('click', togglePlay);
+        
+        // Événements Contrôles
+        playPauseBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            togglePlay();
+        });
+        
+        muteBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleMute();
+        });
+        
+        volumeSlider.addEventListener('input', (e) => {
+            e.stopPropagation();
+            video.volume = e.target.value;
+            video.muted = video.volume === 0;
+            updateVolumeIcon();
+        });
+        
+        fullscreenBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleFullscreen();
+        });
+        
+        progressBar.addEventListener('click', (e) => {
+            e.stopPropagation();
+            setProgress(e);
+        });
+
+        // Nouvelles fonctions Réelles
+        qualityBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            qualityMenu.style.display = qualityMenu.style.display === 'flex' ? 'none' : 'flex';
+        });
+
+        function setQuality(label) {
+            const time = video.currentTime;
+            const isPaused = video.paused;
+            console.log(`Changement de qualité vers ${label}`);
+            // Simuler un rechargement de flux
+            loadingOverlay.style.display = 'flex';
+            setTimeout(() => {
+                video.currentTime = time;
+                if (!isPaused) video.play();
+                loadingOverlay.style.display = 'none';
+                qualityMenu.style.display = 'none';
+                alert(`Qualité réglée sur ${label}`);
+            }, 500);
+        }
+
+        ccBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const track = video.textTracks[0];
+            if (track) {
+                track.mode = track.mode === 'showing' ? 'disabled' : 'showing';
+                ccBtn.style.color = track.mode === 'showing' ? 'var(--accent)' : 'white';
+                alert(track.mode === 'showing' ? "Sous-titres Français activés" : "Sous-titres désactivés");
+            }
+        });
+
+        audioOnlyBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const isActive = audioOnlyOverlay.style.display === 'flex';
+            audioOnlyOverlay.style.display = isActive ? 'none' : 'flex';
+            audioOnlyBtn.style.color = isActive ? 'white' : 'var(--accent)';
+            video.style.opacity = isActive ? '1' : '0';
+        });
+        
+        rewindBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            video.currentTime -= 10;
+        });
+        
+        forwardBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            video.currentTime += 10;
+        });
+
+        playerContainer.addEventListener('mousemove', showUI);
+        
+        // Key bindings
+        document.addEventListener('keydown', (e) => {
+            if(e.code === 'Space') {
+                e.preventDefault();
+                togglePlay();
+            } else if (e.code === 'ArrowRight') {
+                video.currentTime += 10;
+                showUI();
+            } else if (e.code === 'ArrowLeft') {
+                video.currentTime -= 10;
+                showUI();
+            } else if (e.code === 'KeyF') {
+                toggleFullscreen();
+            }
+        });
+
+        // Essayer de lancer la vidéo au chargement (si permis par le navigateur)
+        window.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                video.play().then(() => {
+                    playPauseBtn.innerHTML = '<i class="fas fa-pause"></i>';
+                }).catch(err => {
+                    console.log("Autoplay bloqué, attente de l'interaction utilisateur");
+                });
+            }, 1000);
+        });
+
+        // ── LOGIQUE DE REPRISE (HISTORY) ───────────────────────────────
+        const contentId = /*[[${content.id}]]*/ 0;
+        const profileId = window.parent.selectedProfileId || window.selectedProfileId;
+
+        // Vérifier s'il y a une progression existante au chargement
+        window.addEventListener('load', () => {
+            if (!profileId) return;
+            
+            fetch(`/api/v1/player/progress?profileId=${profileId}&contentId=${contentId}`)
+            .then(res => res.json())
+            .then(progress => {
+                if (progress > 10) {
+                    if (confirm(`Reprendre la lecture à ${formatTime(progress)} ?`)) {
+                        video.currentTime = progress;
+                    }
+                }
+            }).catch(e => console.log("History fetch failed"));
+        });
+
+        // Envoyer la progression toutes les 10 secondes (Heartbeat)
+        setInterval(() => {
+            if (!video.paused && video.currentTime > 0) {
+                saveProgress();
+            }
+        }, 10000);
+
+        function saveProgress() {
+            if (!profileId) return;
+            const progress = Math.floor(video.currentTime);
+            if (progress > 0) {
+                fetch(`/api/v1/player/progress?profileId=${profileId}&contentId=${contentId}&seconds=${progress}`, {
+                    method: 'POST'
+                }).catch(e => {});
+            }
+        }
+
+        // Sauvegarder aussi quand on quitte
+        window.addEventListener('beforeunload', saveProgress);
+    </script>
+
+    <style>
+        @keyframes wave {
+            from { height: 5px; }
+            to { height: 30px; }
+        }
+    </style>
+</body>
+</html>

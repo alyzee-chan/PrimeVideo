@@ -1,0 +1,437 @@
+<<<<<<< HEAD
+=======
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Paiement Sécurisé — Prime Video</title>
+    <link rel="stylesheet" th:href="@{/css/main.css}"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+    <style>
+        .checkout-page {
+            min-height: 100vh;
+            background: radial-gradient(circle at top right, #1a1d24, #0f1117);
+            padding: 40px 20px;
+        }
+        .checkout-container {
+            max-width: 1100px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1.4fr 1fr;
+            gap: 30px;
+        }
+        .checkout-card {
+            background: rgba(255, 255, 255, 0.02);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 30px;
+            padding: 40px;
+            box-shadow: 0 40px 100px rgba(0,0,0,0.4);
+        }
+        
+        /* ── CARTE 3D VISUELLE ── */
+        .card-visual {
+            width: 100%;
+            max-width: 380px;
+            height: 220px;
+            background: linear-gradient(135deg, #2c3e50, #000000);
+            border-radius: 20px;
+            margin: 0 auto 30px;
+            padding: 25px;
+            color: white;
+            position: relative;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+            transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            transform-style: preserve-3d;
+        }
+        .card-visual:hover { transform: scale(1.02) rotateY(5deg); }
+        .card-chip { width: 50px; height: 40px; background: linear-gradient(135deg, #ffd700, #b8860b); border-radius: 8px; margin-bottom: 30px; }
+        .card-number-display { font-size: 1.4rem; letter-spacing: 3px; margin-bottom: 20px; font-family: 'Courier New', monospace; }
+        .card-bottom { display: flex; justify-content: space-between; align-items: flex-end; }
+        .card-holder-display { text-transform: uppercase; font-size: 0.9rem; opacity: 0.8; }
+        .card-expiry-display { font-size: 0.9rem; opacity: 0.8; }
+        .card-logo { font-size: 2rem; }
+
+        .payment-methods {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin-bottom: 40px;
+        }
+        .method-tab {
+            background: rgba(255, 255, 255, 0.03);
+            border: 2px solid rgba(255,255,255,0.05);
+            padding: 15px 5px;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+        .method-tab i { font-size: 1.8rem; opacity: 0.6; }
+        .method-tab span { font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.6; }
+        .method-tab.active {
+            background: rgba(0, 168, 225, 0.1);
+            border-color: #00A8E1;
+            box-shadow: 0 10px 20px rgba(0, 168, 225, 0.2);
+        }
+        .method-tab.active i, .method-tab.active span { opacity: 1; color: #00A8E1; }
+
+        .payment-form-section { display: none; animation: slideUp 0.5s ease-out; }
+        .payment-form-section.active { display: block; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+        .form-input-premium {
+            background: rgba(0,0,0,0.2);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 15px;
+            color: white;
+            width: 100%;
+            margin-bottom: 20px;
+            font-size: 1rem;
+            transition: all 0.3s;
+        }
+        .form-input-premium:focus { border-color: #00A8E1; background: rgba(0, 168, 225, 0.05); outline: none; }
+
+        .summary-card {
+            background: rgba(255, 255, 255, 0.02);
+            backdrop-filter: blur(40px);
+            -webkit-backdrop-filter: blur(40px);
+            border-radius: 30px;
+            padding: 35px;
+            height: fit-content;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 40px 100px rgba(0,0,0,0.5);
+            position: sticky;
+            top: 100px;
+            transition: all 0.3s ease;
+        }
+        .summary-card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(0, 168, 225, 0.3);
+        }
+        .summary-total { font-size: 2rem; font-weight: 900; color: #00ffcc; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 20px; margin-top: 20px; }
+
+        /* ── PROCESSING OVERLAY ── */
+        .processing-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(15, 17, 23, 0.98);
+            z-index: 20000;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            text-align: center;
+        }
+        .processing-spinner {
+            width: 80px;
+            height: 80px;
+            border: 4px solid rgba(0, 168, 225, 0.1);
+            border-top: 4px solid #00A8E1;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 30px;
+        }
+        .processing-progress {
+            width: 300px;
+            height: 6px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+        .progress-bar-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #00A8E1, #00ffcc);
+            transition: width 0.3s;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .btn-pay-now {
+            width: 100%;
+            background: linear-gradient(135deg, #FFCC00, #FF9900);
+            color: #000;
+            padding: 20px;
+            border-radius: 16px;
+            font-size: 1.3rem;
+            font-weight: 900;
+            border: none;
+            cursor: pointer;
+            margin-top: 25px;
+            box-shadow: 0 10px 30px rgba(255, 153, 0, 0.4);
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            animation: pulse-glow-btn 2s infinite;
+        }
+        .btn-pay-now:hover {
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: 0 15px 40px rgba(255, 153, 0, 0.6);
+        }
+        @keyframes pulse-glow-btn {
+            0% { box-shadow: 0 0 0 0 rgba(255, 153, 0, 0.5); }
+            70% { box-shadow: 0 0 0 15px rgba(255, 153, 0, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 153, 0, 0); }
+        }
+
+        @media (max-width: 900px) { .checkout-container { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body class="checkout-page cosmic-theme">
+    <div th:replace="~{layout :: navbar}"></div>
+
+    <div class="checkout-container">
+        <!-- Section Paiement -->
+        <div class="checkout-card">
+            <div class="checkout-header-sticky">
+                <h1 style="margin-bottom: 10px; font-weight: 900; letter-spacing: -1px;">Paiement Sécurisé</h1>
+                <p style="color: rgba(255,255,255,0.5); margin-bottom: 40px;">Finalisez votre abonnement pour commencer l'aventure.</p>
+            </div>
+
+            <form th:action="@{/payment/checkout}" th:object="${paymentRequest}" method="post" id="checkoutForm">
+                <input type="hidden" name="planType" th:value="${plan.type}"/>
+                <input type="hidden" th:field="*{amount}"/>
+                <input type="hidden" th:field="*{currency}"/>
+                <input type="hidden" th:field="*{description}"/>
+                <input type="hidden" th:field="*{paymentMethod}" id="paymentMethodInput" value="CARD"/>
+
+                <div class="payment-methods">
+                    <div class="method-tab active" onclick="selectMethod('CARD', this)">
+                        <i class="fas fa-credit-card"></i>
+                        <span>Carte</span>
+                    </div>
+                    <div class="method-tab" onclick="selectMethod('MOBILE_MONEY_MOMO', this)">
+                        <i class="fas fa-mobile-alt"></i>
+                        <span>MTN MoMo</span>
+                    </div>
+                    <div class="method-tab" onclick="selectMethod('ORANGE_MONEY', this)">
+                        <i class="fas fa-mobile-alt"></i>
+                        <span>Orange</span>
+                    </div>
+                    <div class="method-tab" onclick="selectMethod('PAYPAL', this)">
+                        <i class="fab fa-paypal"></i>
+                        <span>PayPal</span>
+                    </div>
+                </div>
+
+                <!-- ── VISUEL DE CARTE INTERACTIF ── -->
+                <div id="cardVisualContainer">
+                    <div class="card-visual">
+                        <div class="card-chip"></div>
+                        <div class="card-number-display" id="cardNumberView">•••• •••• •••• ••••</div>
+                        <div class="card-bottom">
+                            <div class="card-holder-display" id="cardHolderView">NOM DU TITULAIRE</div>
+                            <div class="card-expiry-display" id="cardExpiryView">MM/AA</div>
+                            <div class="card-logo"><i class="fab fa-cc-visa"></i></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Formulaire Carte -->
+                <div id="form-CARD" class="payment-form-section active">
+                    <label style="display: block; margin-bottom: 8px; font-size: 0.9rem; opacity: 0.7;">Nom sur la carte</label>
+                    <input type="text" th:field="*{cardHolderName}" class="form-input-premium" placeholder="John Doe"
+                           oninput="updateCard('cardHolderView', this.value, 'NOM DU TITULAIRE')">
+                    
+                    <label style="display: block; margin-bottom: 8px; font-size: 0.9rem; opacity: 0.7;">Numéro de carte</label>
+                    <input type="text" th:field="*{cardNumber}" class="form-input-premium" placeholder="4242 4242 4242 4242"
+                           oninput="updateCard('cardNumberView', formatCardNumber(this.value), '•••• •••• •••• ••••')">
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <div>
+                            <label style="display: block; margin-bottom: 8px; font-size: 0.9rem; opacity: 0.7;">Expiration (MM/AA)</label>
+                            <input type="text" th:field="*{expiryDate}" class="form-input-premium" placeholder="12/26"
+                                   oninput="updateCard('cardExpiryView', this.value, 'MM/AA')">
+                        </div>
+                        <div>
+                            <label style="display: block; margin-bottom: 8px; font-size: 0.9rem; opacity: 0.7;">CVV</label>
+                            <input type="password" th:field="*{cvv}" class="form-input-premium" placeholder="123" maxlength="3">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Formulaire Mobile Money -->
+                <div id="form-MOBILE_MONEY" class="payment-form-section">
+                    <div style="background: rgba(255,255,255,0.05); padding: 30px; border-radius: 20px; text-align: center; margin-bottom: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                        <!-- Logo MTN SVG -->
+                        <div id="momo-icon-large" style="display: none;">
+                            <svg width="80" height="80" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                                <circle cx="50" cy="50" r="48" fill="#FFCC00"/>
+                                <ellipse cx="50" cy="50" rx="42" ry="28" fill="none" stroke="#003399" stroke-width="4"/>
+                                <text x="50" y="58" font-family="Arial, sans-serif" font-size="22" font-weight="900" fill="#003399" text-anchor="middle">MTN</text>
+                            </svg>
+                        </div>
+                        <!-- Logo Orange SVG -->
+                        <div id="om-icon-large" style="display: none;">
+                            <svg width="80" height="80" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                                <rect width="100" height="100" fill="#FF6600"/>
+                                <text x="50" y="65" font-family="Arial, sans-serif" font-size="20" font-weight="bold" fill="white" text-anchor="middle">Orange</text>
+                            </svg>
+                        </div>
+                        <h3 id="mobile-method-name" style="margin-top: 15px;">Mobile Money</h3>
+                    </div>
+                    <label style="display: block; margin-bottom: 8px; font-size: 0.9rem; opacity: 0.7;">Numéro de téléphone</label>
+                    <input type="text" th:field="*{phoneNumber}" class="form-input-premium" placeholder="6XXXXXXXX">
+                    <p style="font-size: 0.85rem; opacity: 0.5; line-height: 1.4;">
+                        <i class="fas fa-info-circle"></i> Une fois cliqué sur "Payer", une demande de confirmation apparaîtra sur votre téléphone.
+                    </p>
+                </div>
+
+                <!-- Formulaire PayPal -->
+                <div id="form-PAYPAL" class="payment-form-section">
+                    <div style="background: #003087; padding: 40px; border-radius: 20px; text-align: center; margin-bottom: 20px;">
+                        <i class="fab fa-paypal" style="font-size: 4rem; color: white;"></i>
+                        <h2 style="color: white; margin-top: 10px;">PayPal</h2>
+                    </div>
+                    <label style="display: block; margin-bottom: 8px; font-size: 0.9rem; opacity: 0.7;">Email PayPal</label>
+                    <input type="email" th:field="*{paypalEmail}" class="form-input-premium" placeholder="votre-email@paypal.com">
+                </div>
+
+                <div th:if="${errorMsg}" class="alert alert-error" style="margin-top: 20px;" th:text="${errorMsg}">Erreur</div>
+            </form>
+        </div>
+
+        <!-- Notification Push MoMo Simulation (Ancien système, gardé pour la transition) -->
+        <div id="momoPush" style="display: none;"></div>
+
+        <!-- ── NOUVEL OVERLAY DE TRAITEMENT RÉALISTE ── -->
+        <div id="processingOverlay" class="processing-overlay">
+            <div class="processing-spinner"></div>
+            <h2 id="processingTitle">Sécurisation de la transaction...</h2>
+            <p id="processingSubtitle" style="opacity: 0.7; margin-bottom: 25px;">Connexion sécurisée aux serveurs bancaires</p>
+            <div class="processing-progress">
+                <div id="progressBar" class="progress-bar-fill"></div>
+            </div>
+            <div style="font-size: 0.8rem; opacity: 0.5;">
+                <i class="fas fa-shield-alt"></i> Protégé par cryptage SSL 256-bits
+            </div>
+        </div>
+
+        <!-- Résumé de la commande -->
+        <div class="summary-card">
+            <div class="summary-header">
+                <h2 style="margin-bottom: 5px;">Résumé</h2>
+                <p style="font-size: 0.9rem; opacity: 0.5;">Récapitulatif de votre abonnement</p>
+            </div>
+
+            <div class="summary-row">
+                <span th:text="${plan.name}">Plan</span>
+                <span th:text="${#numbers.formatDecimal(plan.price, 1, 2)} + ' ' + ${plan.currency}">0.00 EUR</span>
+            </div>
+            <div class="summary-row">
+                <span>Période</span>
+                <span th:text="${plan.billingPeriod == 'MONTHLY' ? 'Par mois' : 'Par an'}">Mensuel</span>
+            </div>
+            <div class="summary-row">
+                <span>TVA (0%)</span>
+                <span>0 CFA</span>
+            </div>
+
+            <div class="summary-total">
+                <span>TOTAL</span>
+                <span th:text="${#numbers.formatDecimal(plan.price, 1, 2)} + ' ' + ${plan.currency}">0.00 EUR</span>
+            </div>
+
+            <button type="button" class="btn-pay-now" onclick="startPayment()">
+                <i class="fas fa-lock"></i> Payer maintenant
+            </button>
+
+            <p style="text-align: center; font-size: 0.75rem; opacity: 0.4; margin-top: 20px;">
+                Paiement crypté SSL 256-bits.
+            </p>
+        </div>
+    </div>
+
+    <script>
+        function selectMethod(method, el) {
+            document.querySelectorAll('.method-tab').forEach(t => t.classList.remove('active'));
+            el.classList.add('active');
+            document.getElementById('paymentMethodInput').value = method;
+            document.querySelectorAll('.payment-form-section').forEach(f => f.classList.remove('active'));
+            
+            // Hide card visual if not CARD
+            document.getElementById('cardVisualContainer').style.display = (method === 'CARD') ? 'block' : 'none';
+
+            if (method === 'CARD') {
+                document.getElementById('form-CARD').classList.add('active');
+            } else if (method === 'PAYPAL') {
+                document.getElementById('form-PAYPAL').classList.add('active');
+            } else {
+                document.getElementById('form-MOBILE_MONEY').classList.add('active');
+                const isMomo = method === 'MOBILE_MONEY_MOMO';
+                document.getElementById('momo-icon-large').style.display = isMomo ? 'inline-block' : 'none';
+                document.getElementById('om-icon-large').style.display = !isMomo ? 'inline-block' : 'none';
+                document.getElementById('mobile-method-name').innerText = isMomo ? 'MTN MoMo' : 'Orange Money';
+                
+                // Update Push Simulation Info (SVG)
+                document.getElementById('pushTitle').innerText = isMomo ? 'MTN MoMo' : 'Orange Money';
+                const pushLogo = document.getElementById('pushLogoContainer');
+                if (isMomo) {
+                    pushLogo.innerHTML = `<svg width="30" height="30" viewBox="0 0 100 100"><circle cx="50" cy="50" r="48" fill="#FFCC00"/><text x="50" y="65" font-family="Arial" font-size="30" font-weight="900" fill="#003399" text-anchor="middle">MTN</text></svg>`;
+                } else {
+                    pushLogo.innerHTML = `<svg width="30" height="30" viewBox="0 0 100 100"><rect width="100" height="100" fill="#FF6600"/><text x="50" y="65" font-family="Arial" font-size="25" font-weight="bold" fill="white" text-anchor="middle">O</text></svg>`;
+                }
+            }
+        }
+
+        function updateCard(id, val, placeholder) {
+            document.getElementById(id).innerText = val.trim() === '' ? placeholder : val;
+        }
+
+        function formatCardNumber(val) {
+            return val.replace(/\s?/g, '').replace(/(\d{4})/g, '$1 ').trim();
+        }
+
+        function startPayment() {
+            const method = document.getElementById('paymentMethodInput').value;
+            const overlay = document.getElementById('processingOverlay');
+            const bar = document.getElementById('progressBar');
+            const title = document.getElementById('processingTitle');
+            const subtitle = document.getElementById('processingSubtitle');
+            
+            overlay.style.display = 'flex';
+            
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += Math.random() * 15;
+                if (progress > 100) progress = 100;
+                bar.style.width = progress + '%';
+                
+                if (progress > 30) {
+                    title.innerText = "Vérification des fonds...";
+                    subtitle.innerText = "Autorisation en cours auprès de votre établissement";
+                }
+                if (progress > 60) {
+                    if (method.includes('MOBILE_MONEY') || method === 'ORANGE_MONEY') {
+                        title.innerText = "Attente de confirmation USSD...";
+                        subtitle.innerText = "Veuillez valider l'opération sur votre téléphone";
+                    } else {
+                        title.innerText = "Finalisation du paiement...";
+                        subtitle.innerText = "Génération de votre abonnement Prime Video";
+                    }
+                }
+                
+                if (progress >= 100) {
+                    clearInterval(interval);
+                    setTimeout(() => document.getElementById('checkoutForm').submit(), 800);
+                }
+            }, 400);
+        }
+    </script>
+
+    <div th:replace="~{layout :: footer}"></div>
+</body>
+</html>
+>>>>>>> f85e8d9 (Projet PrimeVideo complet)

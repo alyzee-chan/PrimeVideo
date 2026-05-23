@@ -1,0 +1,308 @@
+<<<<<<< HEAD
+=======
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Inscription — PrimeVideo</title>
+    <link rel="stylesheet" th:href="@{/css/main.css}"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+    <style>
+        body.auth-page {
+            background: linear-gradient(rgba(15, 17, 23, 0.7), rgba(15, 17, 23, 0.9)), 
+                        url('https://images.unsplash.com/photo-1574267432553-4b4628081c31?q=80&w=1920&auto=format&fit=crop');
+            background-size: cover;
+            background-position: center;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .auth-card {
+            background: rgba(26, 29, 36, 0.7);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 40px;
+            width: 100%;
+            max-width: 500px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+            animation: fadeIn 0.8s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        .auth-logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            text-decoration: none;
+            margin-bottom: 25px;
+        }
+
+        .auth-logo i {
+            font-size: 1.8rem;
+            color: var(--accent);
+        }
+
+        .auth-logo span {
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: white;
+            letter-spacing: -1px;
+        }
+
+        .auth-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 25px;
+            color: white;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group.full {
+            grid-column: span 2;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .input-wrapper {
+            position: relative;
+            width: 100%;
+        }
+
+        .input-wrapper i:not(.fa-eye) {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: rgba(255, 255, 255, 0.3);
+            z-index: 5;
+            pointer-events: none;
+        }
+
+        .form-input {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 10px 15px 10px 40px;
+            border-radius: 8px;
+            color: white;
+            font-size: 0.95rem;
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        .form-input:focus {
+            border-color: var(--accent);
+            background: rgba(0, 168, 225, 0.05);
+        }
+
+        .btn-auth {
+            width: 100%;
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 10px;
+        }
+
+        .btn-auth:hover {
+            background: #008fbf;
+            box-shadow: 0 8px 15px rgba(0, 168, 225, 0.3);
+        }
+
+        .auth-switch {
+            text-align: center;
+            margin-top: 25px;
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .auth-switch a {
+            color: var(--accent);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .field-error {
+            color: #ff4757;
+            font-size: 0.75rem;
+            margin-top: 4px;
+            display: block;
+        }
+
+        .input-error {
+            border-color: #ff4757 !important;
+        }
+
+        /* Mobile Adjustments */
+        @media (max-width: 480px) {
+            .form-grid { grid-template-columns: 1fr; }
+            .form-group.full { grid-column: span 1; }
+            .auth-card { padding: 30px 20px; }
+            .back-home-btn { top: 15px; left: 15px; padding: 8px 15px; font-size: 0.9rem; }
+            .auth-title { font-size: 1.5rem; }
+        }
+
+        .back-home-btn {
+            position: absolute;
+            top: 30px;
+            left: 40px;
+            color: rgba(255, 255, 255, 0.6);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 10px 20px;
+            border-radius: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+        }
+
+        .back-home-btn:hover {
+            color: white;
+            background: rgba(0, 168, 225, 0.2);
+            border-color: var(--accent);
+            transform: translateX(-5px);
+        }
+    </style>
+</head>
+<body class="auth-page">
+
+<!-- Back Button -->
+<a th:href="@{/home}" class="back-home-btn">
+    <i class="fas fa-arrow-left"></i> Retour à l'accueil
+</a>
+
+<div class="auth-card">
+    <a href="/home" class="auth-logo">
+        <i class="fas fa-play-circle"></i>
+        <span>Prime<span style="color: var(--accent);">Video</span></span>
+    </a>
+    
+    <h1 class="auth-title" th:text="#{auth.register.title}">Création de votre compte</h1>
+
+    <div th:if="${errorMsg}" class="alert alert-error" style="background: rgba(255, 71, 87, 0.1); border: 1px solid #ff4757; color: #ff4757; padding: 10px; border-radius: 8px; margin-bottom: 20px; font-size: 0.85rem;">
+        <i class="fas fa-exclamation-circle"></i> <span th:text="${errorMsg}"></span>
+    </div>
+
+    <form th:action="@{/auth/register}" th:object="${registerRequest}" method="post">
+        <div class="form-grid">
+            <div class="form-group full">
+                <label for="fullName" th:text="#{auth.register.fullname}">Nom complet</label>
+                <div class="input-wrapper">
+                    <i class="fas fa-user"></i>
+                    <input type="text" id="fullName" th:field="*{fullName}"
+                           placeholder="Jean Dupont" class="form-input"
+                           th:classappend="${#fields.hasErrors('fullName')} ? 'input-error' : ''"/>
+                </div>
+                <span th:if="${#fields.hasErrors('fullName')}" th:errors="*{fullName}" class="field-error"></span>
+            </div>
+
+            <div class="form-group full">
+                <label for="email" th:text="#{auth.register.email}">Adresse Email</label>
+                <div class="input-wrapper">
+                    <i class="fas fa-envelope"></i>
+                    <input type="email" id="email" th:field="*{email}"
+                           placeholder="nom@exemple.com" class="form-input"
+                           th:classappend="${#fields.hasErrors('email')} ? 'input-error' : ''"/>
+                </div>
+                <span th:if="${#fields.hasErrors('email')}" th:errors="*{email}" class="field-error"></span>
+            </div>
+
+            <div class="form-group">
+                <label for="password" th:text="#{auth.register.password}">Mot de passe</label>
+                <div class="input-wrapper">
+                    <i class="fas fa-lock"></i>
+                    <input type="password" id="password" th:field="*{password}"
+                           placeholder="••••••••" class="form-input" style="padding-right: 45px;"
+                           th:classappend="${#fields.hasErrors('password')} ? 'input-error' : ''"/>
+                    <button type="button" onclick="togglePassword('password', this)" 
+                            style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: rgba(255,255,255,0.6); cursor: pointer; z-index: 10; padding: 8px;">
+                        <i class="fas fa-eye" style="font-size: 1.1rem;"></i>
+                    </button>
+                </div>
+                <span th:if="${#fields.hasErrors('password')}" th:errors="*{password}" class="field-error"></span>
+            </div>
+
+            <div class="form-group">
+                <label for="confirmPassword" th:text="#{auth.register.confirm}">Confirmer</label>
+                <div class="input-wrapper">
+                    <i class="fas fa-shield-halved"></i>
+                    <input type="password" id="confirmPassword" th:field="*{confirmPassword}"
+                           placeholder="••••••••" class="form-input" style="padding-right: 45px;"
+                           th:classappend="${#fields.hasErrors('confirmPassword')} ? 'input-error' : ''"/>
+                    <button type="button" onclick="togglePassword('confirmPassword', this)" 
+                            style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: rgba(255,255,255,0.6); cursor: pointer; z-index: 10; padding: 8px;">
+                        <i class="fas fa-eye" style="font-size: 1.1rem;"></i>
+                    </button>
+                </div>
+                <span th:if="${#fields.hasErrors('confirmPassword')}" th:errors="*{confirmPassword}" class="field-error"></span>
+            </div>
+        </div>
+
+        <button type="submit" class="btn-auth" th:text="#{auth.register.submit}">Créer mon compte</button>
+    </form>
+
+    <p class="auth-switch">
+        <span th:text="#{auth.register.have_account}">Vous avez déjà un compte ?</span>
+        <a th:href="@{/auth/login}" style="color: var(--accent); font-weight: 700;" th:text="#{auth.register.login}">Se connecter</a>
+    </p>
+</div>
+</div>
+
+<script>
+    function togglePassword(inputId, btn) {
+        const input = document.getElementById(inputId);
+        const icon = btn.querySelector('i');
+        if (input.type === 'password') {
+            input.type = 'text';
+            icon.classList.remove('fa-eye');
+            icon.classList.add('fa-eye-slash');
+            btn.style.color = 'var(--accent)';
+        } else {
+            input.type = 'password';
+            icon.classList.remove('fa-eye-slash');
+            icon.classList.add('fa-eye');
+            btn.style.color = 'rgba(255,255,255,0.4)';
+        }
+    }
+</script>
+</div>
+
+</body>
+</html>
+>>>>>>> f85e8d9 (Projet PrimeVideo complet)

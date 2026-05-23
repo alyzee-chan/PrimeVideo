@@ -1,0 +1,92 @@
+server:
+  port: 8082
+  address: 0.0.0.0
+  servlet:
+    context-path: /
+  tomcat:
+    max-swallow-size: -1
+
+spring:
+  application:
+    name: primevideo
+
+  # Configuration Mail (Gmail)
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: miomirisaki@gmail.com
+    password: qssryensruldbqvr
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
+      mail.smtp.starttls.required: true
+      mail.smtp.connectiontimeout: 5000
+      mail.smtp.timeout: 5000
+      mail.smtp.writetimeout: 5000
+
+  # Configuration base de données MySQL (WAMP)
+  datasource:
+    url: jdbc:mysql://localhost:3306/primevideo_db?useSSL=false&serverTimezone=Europe/Paris&allowPublicKeyRetrieval=true&characterEncoding=UTF-8
+    username: root
+    password:   # Laisser vide si WAMP par défaut (pas de mot de passe)
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  sql:
+    init:
+      mode: never # Désactivé pour éviter de supprimer les nouveaux utilisateurs à chaque redémarrage
+
+  # Configuration JPA / Hibernate
+  jpa:
+    hibernate:
+      ddl-auto: update   # Crée/met à jour les tables automatiquement
+    show-sql: true       # Affiche les requêtes SQL dans la console (utile en dev)
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.MySQLDialect
+
+  # Configuration Thymeleaf
+  thymeleaf:
+    prefix: classpath:/templates/
+    suffix: .html
+    encoding: UTF-8
+    cache: false   # Désactiver le cache en développement
+
+  # Upload de fichiers
+  servlet:
+    multipart:
+      max-file-size: 1024MB
+      max-request-size: 1024MB
+
+# Configuration JWT
+jwt:
+  secret: primevideo-super-secret-key-256-bits-minimum-pour-hs256-algorithm-2024
+  expiration: 3600000    # 1 heure en millisecondes
+  refresh-expiration: 604800000  # 7 jours
+
+# Logging
+logging:
+  level:
+    com.primevideo: DEBUG
+    org.springframework.security: INFO
+    org.hibernate.SQL: DEBUG
+
+# Application Specific Properties
+app:
+  email:
+    enabled: true
+    from: miomirisaki@gmail.com
+  admin:
+    email: admin@gmail.cm
+    password-hash: "$2a$10$aCRT9BzeRYbR8/FdItgqBuwTar/.vioh/.12blGR0BFbGtXuICi9m"
+  signature:
+    secret: pressing-g5-signature-secret-2026
+  notifications:
+    ready-check-cron: "0 */1 * * * *"
+  chatbot:
+    enabled: true
+    provider: groq
+    owner-email: alanayissi5@gmail.com
+    api-url: "https://api.groq.com/openai/v1/chat/completions"
+    model: llama-3.1-8b-instant
+    api-key: YOUR_GROQ_API_KEY

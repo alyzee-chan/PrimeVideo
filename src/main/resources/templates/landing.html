@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to Prime Video</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-color: #000000;
+            --text-primary: #ffffff;
+            --text-secondary: #8197a4;
+            --accent-blue: #00a8e1;
+            --btn-hover: #0093c4;
+            --bg-gradient: linear-gradient(to right, #000000 0%, #000000 30%, rgba(0,0,0,0) 100%);
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            overflow: hidden; /* Prevent scrolling during animation */
+        }
+
+        /* --- PRELOADER (SMILE ANIMATION) --- */
+        #preloader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: var(--bg-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            opacity: 1;
+            transition: opacity 0.8s ease-in-out;
+        }
+
+        .smile-logo {
+            width: 250px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .prime-video-text {
+            fill: #ffffff;
+            opacity: 0;
+            animation: textFadeIn 0.5s ease forwards 0.5s;
+        }
+
+        .smile-path {
+            fill: none;
+            stroke: #00A8E1;
+            stroke-width: 4.5;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            stroke-dasharray: 300;
+            stroke-dashoffset: 300;
+            animation: drawSmile 3.2s cubic-bezier(0.25, 0.1, 0.25, 1) forwards 0.5s;
+        }
+
+        .smile-arrow {
+            fill: none;
+            stroke: #00A8E1;
+            stroke-width: 4.5;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            opacity: 0;
+            animation: fadeInArrow 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards 3.0s;
+        }
+
+        @keyframes fadeInArrow {
+            to { opacity: 1; }
+        }
+
+        @keyframes textFadeIn {
+            to { opacity: 1; }
+        }
+
+        @keyframes drawSmile {
+            to { stroke-dashoffset: 0; }
+        }
+
+        /* --- LANDING LAYOUT --- */
+        #main-content {
+            opacity: 0;
+            transition: opacity 1s ease-in-out;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* HEADER */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 40px;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            box-sizing: border-box;
+            z-index: 100;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 30px;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 800;
+            letter-spacing: -1px;
+            display: flex;
+            align-items: baseline;
+            gap: 5px;
+            text-decoration: none;
+            color: var(--text-primary);
+        }
+
+        .logo span {
+            color: var(--accent-blue);
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 20px;
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
+        .nav-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .nav-links a:hover {
+            color: var(--text-primary);
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .icon-btn {
+            background: none;
+            border: none;
+            color: var(--text-primary);
+            font-size: 1.2rem;
+            cursor: pointer;
+        }
+
+        .join-btn {
+            background-color: var(--accent-blue);
+            color: var(--text-primary);
+            font-weight: 700;
+            padding: 10px 20px;
+            border-radius: 4px;
+            text-decoration: none;
+            transition: background 0.2s;
+        }
+
+        .join-btn:hover {
+            background-color: var(--btn-hover);
+        }
+
+        /* SPLIT SCREEN CONTENT */
+        .landing-container {
+            display: flex;
+            flex: 1;
+            position: relative;
+        }
+
+        /* LEFT AREA */
+        .landing-left {
+            flex: 0 0 50%;
+            padding: 0 80px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            position: relative;
+            z-index: 10;
+        }
+
+        /* GRADIENT OVERLAY (To blend left to right) */
+        .gradient-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to right, #000 40%, rgba(0,0,0,0.8) 60%, rgba(0,0,0,0) 100%);
+            z-index: 5;
+            pointer-events: none;
+        }
+
+        .landing-content {
+            position: relative;
+            z-index: 10;
+            max-width: 500px;
+            padding-top: 60px; /* added spacing to not collide with header */
+        }
+
+        h1 {
+            font-size: 3.5rem;
+            line-height: 1.2;
+            margin-bottom: 20px;
+            font-weight: 800;
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            line-height: 1.5;
+            color: var(--text-primary);
+            margin-bottom: 40px;
+        }
+
+        .actions {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            max-width: 350px;
+        }
+
+        .btn-primary {
+            display: block;
+            text-align: center;
+            background-color: var(--text-primary);
+            color: var(--bg-color);
+            padding: 15px;
+            border-radius: 4px;
+            font-weight: 700;
+            font-size: 1.1rem;
+            text-decoration: none;
+            transition: opacity 0.2s;
+        }
+
+        .btn-primary:hover {
+            opacity: 0.8;
+        }
+
+        .separator {
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            position: relative;
+        }
+
+        .separator::before, .separator::after {
+            content: "";
+            position: absolute;
+            top: 50%;
+            width: 40%;
+            height: 1px;
+            background-color: #333;
+        }
+
+        .separator::before { left: 0; }
+        .separator::after { right: 0; }
+
+        .disclaimer {
+            margin-top: 30px;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        /* RIGHT AREA (MASONRY GRID) */
+        .landing-right {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 70%;
+            height: 100%;
+            overflow: hidden;
+            z-index: 1;
+        }
+
+        .masonry-grid {
+            display: column;
+            column-count: 3;
+            column-gap: 15px;
+            padding: 20px;
+            width: 120%; /* wider to spill off screen */
+            transform: rotate(-5deg) scale(1.1);
+            transform-origin: center right;
+        }
+
+        .masonry-item {
+            break-inside: avoid;
+            margin-bottom: 15px;
+            border-radius: 8px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .masonry-item img {
+            width: 100%;
+            height: auto;
+            display: block;
+            object-fit: cover;
+            filter: brightness(0.85);
+            transition: filter 0.3s;
+        }
+        
+        .masonry-item:hover img {
+            filter: brightness(1.1);
+        }
+
+    </style>
+</head>
+<body>
+
+    <!-- PRELOADER -->
+    <div id="preloader">
+        <div class="smile-logo">
+            <svg viewBox="0 0 300 110" width="300" height="110">
+                <!-- Prime Video Text -->
+                <text x="10" y="45" font-family="'Inter', sans-serif" font-weight="800" font-size="42" fill="#fff" letter-spacing="-2" class="prime-video-text">prime <tspan fill="#00A8E1">video</tspan></text>
+                <!-- Smile Curve (lowered for more spacing) -->
+                <path class="smile-path" d="M 15,64 Q 120,96 235,60" />
+                <!-- Smile Arrow Head -->
+                <path class="smile-arrow" d="M 221,55 L 236,60 L 227,70" />
+            </svg>
+        </div>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div id="main-content">
+        <header>
+            <div class="header-left">
+                <a href="/" class="logo">prime <span>video</span></a>
+                <div class="nav-links">
+                    <a href="/home">Home</a>
+                    <a href="/catalog?type=FILM">Movies</a>
+                    <a href="/catalog?type=SERIE">TV shows</a>
+                </div>
+            </div>
+            <div class="header-right">
+                <button class="icon-btn" onclick="window.location.href='/search'"><i class="fas fa-search"></i></button>
+                <div style="position:relative; display:inline-block;" class="lang-dropdown">
+                    <button class="icon-btn" style="font-size: 0.9rem; font-weight: 600;" onclick="toggleLang()">FR <i class="fas fa-chevron-down" style="font-size: 0.7rem;"></i></button>
+                    <div id="langMenu" style="display:none; position:absolute; top:30px; left:-10px; background:#111; padding:10px; border-radius:5px; border:1px solid #333; z-index:1000;">
+                        <a href="?lang=fr" style="color:#fff; text-decoration:none; display:block; padding:5px; font-size:0.9rem;">FR - Français</a>
+                        <a href="?lang=en" style="color:#8197a4; text-decoration:none; display:block; padding:5px; font-size:0.9rem;">EN - English</a>
+                    </div>
+                </div>
+                <button class="icon-btn"><i class="fas fa-th"></i></button>
+                <button class="icon-btn" onclick="window.location.href='/auth/login'"><i class="fas fa-user-circle"></i></button>
+                <a href="/auth/register" class="join-btn">Join Prime</a>
+            </div>
+        </header>
+
+        <div class="landing-container">
+            <div class="gradient-overlay"></div>
+            
+            <div class="landing-left">
+                <div class="landing-content">
+                    <h1 th:text="#{landing.welcome.title}">Bienvenue sur Prime Video</h1>
+                    <p class="subtitle" th:text="#{landing.welcome.subtitle}">
+                        Profitez des exclusivités Amazon Originals ainsi que de films et séries populaires. Rejoignez Prime Video dès maintenant pour 3500 FCFA par mois. Résiliable à tout moment.
+                    </p>
+                    
+                    <div class="actions">
+                        <a href="/auth/login" class="btn-primary" th:text="#{landing.signin}">Déjà membre Prime Video ? Connectez-vous</a>
+                        <div class="separator">ou</div>
+                        <a href="/auth/register" class="btn-primary" th:text="#{landing.freetrial}">Commencez votre essai gratuit*</a>
+                    </div>
+                    
+                    <p class="disclaimer" th:text="#{landing.disclaimer}">L'abonnement se renouvelle à 3500 FCFA/mois.</p>
+                </div>
+            </div>
+
+            <div class="landing-right">
+                <div class="masonry-grid">
+                    <!-- Dynamic posters injected from the database -->
+                    <div class="masonry-item" th:each="content, iterStat : ${posters}" th:if="${iterStat.index < 12}">
+                        <!-- Use posterUrl if available, else placeholder -->
+                        <img th:src="${content.posterUrl != null ? content.posterUrl : '/images/placeholder.jpg'}" alt="Poster">
+                    </div>
+                    
+                    <!-- Fallbacks in case database is empty -->
+                    <div class="masonry-item" th:if="${#lists.isEmpty(posters)}">
+                        <img src="https://m.media-amazon.com/images/S/pv-target-images/34fb9e2c6cb3d4b6eb8be26c11b1de095d3aeb1fbce598286a1170bd78a2d3e1._UR1920,1080_UX400_UY225_.jpg" alt="">
+                    </div>
+                    <div class="masonry-item" th:if="${#lists.isEmpty(posters)}">
+                        <img src="https://m.media-amazon.com/images/S/pv-target-images/1cc065e13cb559363a03dc37084654fcda6238b97d19565e381ebcf719db0a1a._UR1920,1080_UX400_UY225_.jpg" alt="">
+                    </div>
+                    <div class="masonry-item" th:if="${#lists.isEmpty(posters)}">
+                        <img src="https://m.media-amazon.com/images/S/pv-target-images/2a7fdb3ce46db875b15b3c3b52bca1d2d0f0dbdf0c8d17ba95fecfbf21f00889._UR1920,1080_UX400_UY225_.jpg" alt="">
+                    </div>
+                    <div class="masonry-item" th:if="${#lists.isEmpty(posters)}">
+                        <img src="https://m.media-amazon.com/images/S/pv-target-images/179b0051cd72dd58ee4dc7cd7b653841e779a5e8061d4a047ed460010041e176._UR1920,1080_UX400_UY225_.jpg" alt="">
+                    </div>
+                    <div class="masonry-item" th:if="${#lists.isEmpty(posters)}">
+                        <img src="https://m.media-amazon.com/images/S/pv-target-images/7f18471e98a3b50c056d6b8fbd86bd1f4fb8e95c1c0f419c8f3750058e3e4a2e._UR1920,1080_UX400_UY225_.jpg" alt="">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function toggleLang() {
+            var menu = document.getElementById('langMenu');
+            menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+        }
+        
+        document.addEventListener("DOMContentLoaded", () => {
+            // The smile animation takes ~4.5s total (3.2s draw + arrow fade)
+            setTimeout(() => {
+                const preloader = document.getElementById('preloader');
+                const mainContent = document.getElementById('main-content');
+                
+                // Fade out preloader
+                preloader.style.opacity = '0';
+                
+                // When preloader fade out finishes, hide it and fade in main content
+                setTimeout(() => {
+                    preloader.style.display = 'none';
+                    mainContent.style.opacity = '1';
+                    document.body.style.overflow = 'auto';
+                }, 800);
+                
+            }, 4500); // Wait for the cinematic drawing to complete fully
+        });
+    </script>
+</body>
+</html>

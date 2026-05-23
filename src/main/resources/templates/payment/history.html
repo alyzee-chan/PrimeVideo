@@ -1,0 +1,72 @@
+<<<<<<< HEAD
+=======
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <title>Historique des paiements — PrimeVideo</title>
+    <link rel="stylesheet" th:href="@{/css/main.css}"/>
+</head>
+<body>
+<div th:replace="~{layout :: navbar}"></div>
+
+<main class="main-content">
+    <div class="page-container">
+        <h1 class="page-title">📋 Historique des paiements</h1>
+
+        <div th:if="${#lists.isEmpty(payments)}" class="empty-state">
+            <p>Aucun paiement pour le moment.</p>
+            <a th:href="@{/payment}" class="btn-primary">Effectuer un paiement</a>
+        </div>
+
+        <div th:if="${not #lists.isEmpty(payments)}" class="table-wrapper">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Transaction</th>
+                        <th>Date</th>
+                        <th>Montant</th>
+                        <th>Méthode</th>
+                        <th>Détail</th>
+                        <th>Statut</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="p : ${payments}">
+                        <td class="mono" th:text="${p.transactionId}">TX-001</td>
+                        <td th:text="${#temporals.format(p.createdAt, 'dd/MM/yyyy HH:mm')}">01/01/2024</td>
+                        <td class="amount" th:text="${#numbers.formatDecimal(p.amount, 0, 'WHITESPACE', 0, 'POINT')} + ' ' + ${p.currency}">45 000 CFA</td>
+                        <td>
+                            <span th:switch="${p.paymentMethod.name()}">
+                                <span th:case="'CARD'">💳 Carte</span>
+                                <span th:case="'PAYPAL'">🅿 PayPal</span>
+                                <span th:case="'MOBILE_MONEY_MOMO'">📱 MoMo</span>
+                                <span th:case="'ORANGE_MONEY'">🟠 Orange</span>
+                            </span>
+                        </td>
+                        <td>
+                            <span th:if="${p.cardLastFour != null}" th:text="'**** ' + ${p.cardLastFour}"></span>
+                            <span th:if="${p.paypalEmail != null}" th:text="${p.paypalEmail}"></span>
+                            <span th:if="${p.phoneNumber != null}" th:text="${p.phoneNumber}"></span>
+                        </td>
+                        <td>
+                            <span th:class="'badge-status status-' + ${#strings.toLowerCase(p.status)}"
+                                  th:text="${p.status}">SUCCESS</span>
+                        </td>
+                        <td>
+                            <a th:if="${p.status.name() == 'SUCCESS'}" th:href="@{'/payment/receipt/' + ${p.transactionId}}" class="btn-small">
+                                <i class="fas fa-file-pdf"></i> Reçu
+                            </a>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</main>
+
+<div th:replace="~{layout :: footer}"></div>
+</body>
+</html>
+>>>>>>> f85e8d9 (Projet PrimeVideo complet)

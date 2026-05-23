@@ -1,0 +1,612 @@
+<<<<<<< HEAD
+=======
+<!DOCTYPE html>
+<html th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <th:block th:replace="~{layout :: head-resources}"></th:block>
+    <title th:text="#{nav.home} + ' — PrimeVideo'">PrimeVideo</title>
+</head>
+<body>
+
+<div th:replace="~{layout :: navbar}"></div>
+
+<!-- Effet de Particules Cosmiques -->
+<div class="cosmic-particles" style="position: absolute; top: 0; left: 0; width: 100%; height: 600px; overflow: hidden; pointer-events: none; z-index: 1; opacity: 0.5;">
+    <div th:each="i : ${#numbers.sequence(1, 15)}" 
+         class="particle" 
+         th:style="'position: absolute; width: 2px; height: 2px; background: white; border-radius: 50%; top: ' + (${i * 7} % 100) + '%; left: ' + (${i * 13} % 100) + '%; animation: float ' + (5 + ${i % 5}) + 's infinite linear;'"></div>
+</div>
+
+<style>
+    @keyframes float {
+        0% { transform: translateY(0) translateX(0); }
+        50% { transform: translateY(-20px) translateX(10px); }
+        100% { transform: translateY(0) translateX(0); }
+    }
+</style>
+
+<!-- Hero Banner -->
+<section class="hero">
+    <div class="hero-glow"></div>
+    <div class="hero-content">
+        <h1 class="hero-title" th:text="#{home.welcome}">Bienvenue sur PrimeVideo</h1>
+        <p class="hero-subtitle" th:text="#{home.subtitle}">Films, séries, animés et bien plus. Streamez où vous voulez.</p>
+        
+        <!-- Grande Barre de Recherche (Hero) -->
+        <div class="hero-search-container" style="margin: 20px auto 40px; max-width: 700px; width: 100%; animation: slideUp 0.8s ease-out; position: relative; z-index: 20;">
+             <form th:action="@{/search}" method="get" style="display: flex; align-items: center; background: rgba(255,255,255,0.03); backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px); border-radius: 40px; padding: 10px 30px; border: 1px solid rgba(255,255,255,0.15); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7); transition: all 0.4s ease;">
+                 <i class="fas fa-search" style="color: var(--accent); font-size: 1.2rem; margin-right: 15px; filter: drop-shadow(0 0 5px var(--accent-glow));"></i>
+                 <input type="text" name="q" th:placeholder="#{home.hero_search}" style="flex: 1; background: none; border: none; color: white; padding: 12px 0; outline: none; font-size: 1.2rem; font-family: inherit; font-weight: 500;">
+                 <div style="display: flex; gap: 25px; margin-left: 20px; align-items: center; border-left: 1px solid rgba(255,255,255,0.1); padding-left: 25px;">
+                     <button type="button" id="heroVoiceBtn" title="Recherche vocale" class="glow-icon-blue" style="background: none; border: none; color: var(--accent); cursor: pointer; font-size: 1.5rem;"><i class="fas fa-microphone"></i></button>
+                     <button type="button" onclick="document.getElementById('heroImageInput').click()" title="Recherche par image (IA)" class="glow-icon-green" style="background: none; border: none; color: #00ffcc; cursor: pointer; font-size: 1.5rem;"><i class="fas fa-camera"></i></button>
+                     <input type="file" id="heroImageInput" style="display: none;" accept="image/*">
+                 </div>
+             </form>
+        </div>
+
+        <div sec:authorize="isAnonymous()" class="hero-actions" style="margin-top: 40px;">
+            <a th:href="@{/auth/register}" class="btn-premium" style="background: linear-gradient(135deg, var(--accent) 0%, #0077b6 100%); color: white !important; font-size: 1.1rem; padding: 16px 40px; box-shadow: 0 10px 30px var(--accent-glow);">
+                <i class="fas fa-user-plus"></i> <span th:text="#{btn.register}">S'inscrire</span>
+            </a>
+            <a th:href="@{/auth/login}" class="btn-secondary" style="font-size: 1.1rem; padding: 16px 40px; border-radius: 12px; background: rgba(255,255,255,0.05); backdrop-filter: blur(10px);">
+                <i class="fas fa-sign-in-alt" style="margin-right: 8px;"></i> <span th:text="#{nav.login}">Se connecter</span>
+            </a>
+        </div>
+        <div sec:authorize="isAuthenticated()" class="hero-actions" style="margin-top: 40px;">
+            <a th:href="@{/catalog}" class="btn-premium" style="background: linear-gradient(135deg, var(--accent) 0%, #0077b6 100%); color: white !important; font-size: 1.1rem; padding: 16px 40px; box-shadow: 0 10px 30px var(--accent-glow);">
+                <i class="fas fa-compass"></i> <span th:text="#{home.explore}">Explorer le catalogue</span>
+            </a>
+        </div>
+    </div>
+</section>
+
+<main class="main-content">
+
+    <!-- Section Continuer la lecture -->
+    <section class="content-section" th:if="${history != null and not #lists.isEmpty(history)}">
+        <h2 class="section-title"><i class="fas fa-clock" style="color: var(--accent); margin-right: 10px;"></i> <span th:text="#{home.continue}">Continuer la lecture</span></h2>
+        <div class="content-grid">
+            <div th:each="item : ${history}" class="content-card" th:if="${not item.completed}">
+                <a th:href="@{/watch/{id}(id=${item.content.id})}">
+                    <div class="card-poster">
+                        <img th:src="${item.content.posterUrl ?: '/images/placeholder.jpg'}" class="poster-img" loading="lazy"/>
+                        <div class="card-overlay"><span class="play-btn"><i class="fas fa-play"></i></span></div>
+                        
+                        <span th:if="${item.content.isPremium}" class="badge-premium">
+                            <i class="fas fa-crown"></i> PREMIUM
+                        </span>
+
+                        <div class="progress-bar-container" style="position: absolute; bottom: 0; left: 0; width: 100%; height: 4px; background: rgba(255,255,255,0.2);">
+                            <div class="progress-bar-fill" th:style="'height: 100%; background: var(--accent); width: ' + (${item.progressSeconds * 100 / (item.content.durationSeconds ?: 3600)}) + '%'"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- NOUVEAU HOVER PANEL (Style Netflix) -->
+                    <div class="hover-panel">
+                        <div class="hover-actions">
+                            <button type="button" class="hover-btn play-btn-small" th:onclick="'window.location.href=\'/watch/' + ${content.id} + '\''" title="Lecture"><i class="fas fa-play" style="margin-left:2px;"></i></button>
+                            <button type="button" class="hover-btn add-btn-small" title="Ajouter à ma liste" sec:authorize="isAuthenticated()" th:onclick="'toggleWatchlist(' + ${content.id} + '); event.preventDefault();'"><i class="fas fa-plus"></i></button>
+                            <button type="button" class="hover-btn like-btn-small" title="J'aime" th:onclick="'event.preventDefault();'"><i class="fas fa-thumbs-up"></i></button>
+                            <button type="button" class="hover-btn more-btn-small" title="Plus d'infos" style="margin-left: auto;" th:onclick="'window.location.href=\'/catalog/' + ${content.id} + '\''"><i class="fas fa-chevron-down"></i></button>
+                        </div>
+                        <div class="hover-meta">
+                            <span class="age-rating" th:text="${content.ageRating} + '+'">16+</span>
+                            <span class="duration" th:if="${content.type.name() == 'FILM' or content.type.name() == 'DOCUMENTAIRE' or content.type.name() == 'AFRICAIN'}" th:text="${content.durationFormatted}">2 h 14 min</span>
+                            <span class="duration" th:if="${content.type.name() == 'SERIE' or content.type.name() == 'ANIME' or content.type.name() == 'KDRAMA'}">
+                                <th:block th:if="${content.animeMetadata != null}" th:text="${content.animeMetadata.episodeCount} + ' Épisodes'"></th:block>
+                                <th:block th:if="${content.kdramaMetadata != null}" th:text="${content.kdramaMetadata.episodeCount} + ' Épisodes'"></th:block>
+                                <!-- Fallback if no specific metadata -->
+                                <th:block th:if="${content.animeMetadata == null and content.kdramaMetadata == null and content.seasons != null}">
+                                    <span th:text="${content.seasons.size()} + ' Saisons'"></span>
+                                </th:block>
+                            </span>
+                            <span class="hd-badge">HD</span>
+                        </div>
+                        <div class="hover-tags">
+                            <span th:text="${content.genre}">Genre</span>
+                        </div>
+                    </div>
+</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Section Ma Liste -->
+    <section class="content-section" th:if="${watchlist != null and not #lists.isEmpty(watchlist)}">
+        <h2 class="section-title"><i class="fas fa-plus-circle" style="color: var(--accent); margin-right: 10px;"></i> <span th:text="#{home.watchlist}">Ma Liste</span></h2>
+        <div class="content-grid">
+            <div th:each="item : ${watchlist}" class="content-card">
+                <a th:href="@{/catalog/{id}(id=${item.content.id})}">
+                    <div class="card-poster">
+                        <img th:src="${item.content.posterUrl ?: '/images/placeholder.jpg'}" class="poster-img" loading="lazy"/>
+                        <div class="card-overlay"><span class="play-btn"><i class="fas fa-play"></i></span></div>
+                        <span th:if="${item.content.isPremium}" class="badge-premium">
+                            <i class="fas fa-crown"></i> PREMIUM
+                        </span>
+                    </div>
+                    
+                    <!-- NOUVEAU HOVER PANEL (Style Netflix) -->
+                    <div class="hover-panel">
+                        <div class="hover-actions">
+                            <button type="button" class="hover-btn play-btn-small" th:onclick="'window.location.href=\'/watch/' + ${content.id} + '\''" title="Lecture"><i class="fas fa-play" style="margin-left:2px;"></i></button>
+                            <button type="button" class="hover-btn add-btn-small" title="Ajouter à ma liste" sec:authorize="isAuthenticated()" th:onclick="'toggleWatchlist(' + ${content.id} + '); event.preventDefault();'"><i class="fas fa-plus"></i></button>
+                            <button type="button" class="hover-btn like-btn-small" title="J'aime" th:onclick="'event.preventDefault();'"><i class="fas fa-thumbs-up"></i></button>
+                            <button type="button" class="hover-btn more-btn-small" title="Plus d'infos" style="margin-left: auto;" th:onclick="'window.location.href=\'/catalog/' + ${content.id} + '\''"><i class="fas fa-chevron-down"></i></button>
+                        </div>
+                        <div class="hover-meta">
+                            <span class="age-rating" th:text="${content.ageRating} + '+'">16+</span>
+                            <span class="duration" th:if="${content.type.name() == 'FILM' or content.type.name() == 'DOCUMENTAIRE' or content.type.name() == 'AFRICAIN'}" th:text="${content.durationFormatted}">2 h 14 min</span>
+                            <span class="duration" th:if="${content.type.name() == 'SERIE' or content.type.name() == 'ANIME' or content.type.name() == 'KDRAMA'}">
+                                <th:block th:if="${content.animeMetadata != null}" th:text="${content.animeMetadata.episodeCount} + ' Épisodes'"></th:block>
+                                <th:block th:if="${content.kdramaMetadata != null}" th:text="${content.kdramaMetadata.episodeCount} + ' Épisodes'"></th:block>
+                                <!-- Fallback if no specific metadata -->
+                                <th:block th:if="${content.animeMetadata == null and content.kdramaMetadata == null and content.seasons != null}">
+                                    <span th:text="${content.seasons.size()} + ' Saisons'"></span>
+                                </th:block>
+                            </span>
+                            <span class="hd-badge">HD</span>
+                        </div>
+                        <div class="hover-tags">
+                            <span th:text="${content.genre}">Genre</span>
+                        </div>
+                    </div>
+</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Section EN DIRECT (LIVE) -->
+    <section class="content-section" th:if="${live != null and not #lists.isEmpty(live)}">
+        <h2 class="section-title"><i class="fas fa-satellite-dish" style="color: #ff0000; margin-right: 10px; animation: pulse 2s infinite;"></i> <span style="color: #ff0000; font-weight: 800;" th:text="#{home.live}">EN DIRECT</span></h2>
+        <div class="content-grid">
+            <div th:each="content : ${live}" class="content-card" style="border: 2px solid rgba(255,0,0,0.3);">
+                <a th:href="@{/watch/{id}(id=${content.id})}">
+                    <div class="card-poster">
+                        <img th:src="${content.posterUrl ?: '/images/placeholder.jpg'}" class="poster-img" loading="lazy"/>
+                        <div class="card-overlay">
+                            <span class="play-btn" style="background: #ff0000;"><i class="fas fa-broadcast-tower"></i></span>
+                        </div>
+                        <span class="badge-live" style="position: absolute; top: 10px; right: 10px; background: #ff0000; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 900; animation: pulse 1.5s infinite;">LIVE</span>
+                    </div>
+                    
+                    <!-- NOUVEAU HOVER PANEL (Style Netflix) -->
+                    <div class="hover-panel">
+                        <div class="hover-actions">
+                            <button type="button" class="hover-btn play-btn-small" th:onclick="'window.location.href=\'/watch/' + ${content.id} + '\''" title="Lecture"><i class="fas fa-play" style="margin-left:2px;"></i></button>
+                            <button type="button" class="hover-btn add-btn-small" title="Ajouter à ma liste" sec:authorize="isAuthenticated()" th:onclick="'toggleWatchlist(' + ${content.id} + '); event.preventDefault();'"><i class="fas fa-plus"></i></button>
+                            <button type="button" class="hover-btn like-btn-small" title="J'aime" th:onclick="'event.preventDefault();'"><i class="fas fa-thumbs-up"></i></button>
+                            <button type="button" class="hover-btn more-btn-small" title="Plus d'infos" style="margin-left: auto;" th:onclick="'window.location.href=\'/catalog/' + ${content.id} + '\''"><i class="fas fa-chevron-down"></i></button>
+                        </div>
+                        <div class="hover-meta">
+                            <span class="age-rating" th:text="${content.ageRating} + '+'">16+</span>
+                            <span class="duration" th:if="${content.type.name() == 'FILM' or content.type.name() == 'DOCUMENTAIRE' or content.type.name() == 'AFRICAIN'}" th:text="${content.durationFormatted}">2 h 14 min</span>
+                            <span class="duration" th:if="${content.type.name() == 'SERIE' or content.type.name() == 'ANIME' or content.type.name() == 'KDRAMA'}">
+                                <th:block th:if="${content.animeMetadata != null}" th:text="${content.animeMetadata.episodeCount} + ' Épisodes'"></th:block>
+                                <th:block th:if="${content.kdramaMetadata != null}" th:text="${content.kdramaMetadata.episodeCount} + ' Épisodes'"></th:block>
+                                <!-- Fallback if no specific metadata -->
+                                <th:block th:if="${content.animeMetadata == null and content.kdramaMetadata == null and content.seasons != null}">
+                                    <span th:text="${content.seasons.size()} + ' Saisons'"></span>
+                                </th:block>
+                            </span>
+                            <span class="hd-badge">HD</span>
+                        </div>
+                        <div class="hover-tags">
+                            <span th:text="${content.genre}">Genre</span>
+                        </div>
+                    </div>
+</a>
+            </div>
+        </div>
+    </section>
+
+    <section class="content-section" th:if="${not #lists.isEmpty(trending)}">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h2 class="section-title" style="margin-bottom: 0;">
+                <i class="fas fa-arrow-trend-up trending-icon"></i> 
+                <span th:text="#{home.trending}">En tendance</span>
+            </h2>
+            <a th:href="@{/catalog}" style="color: var(--accent); font-size: 0.9rem; font-weight: 700; text-decoration: none; display: flex; align-items: center; gap: 8px;">
+                Voir tout <i class="fas fa-chevron-right" style="font-size: 0.7rem;"></i>
+            </a>
+        </div>
+        <div class="content-grid">
+            <div th:each="content : ${trending}" class="content-card">
+                <a th:href="@{/catalog/{id}(id=${content.id})}">
+                    <div class="card-poster">
+                        <img th:src="${content.posterUrl != null ? content.posterUrl : '/images/placeholder.jpg'}"
+                             th:alt="${content.title}" class="poster-img" loading="lazy"/>
+                        <div class="card-overlay">
+                            <span class="play-btn"><i class="fas fa-play"></i></span>
+                        </div>
+                        <span th:if="${content.isPremium}" class="badge-premium"><i class="fas fa-crown" style="font-size: 10px; margin-right: 4px;"></i> PREMIUM</span>
+                    </div>
+                    
+                    <!-- NOUVEAU HOVER PANEL (Style Netflix) -->
+                    <div class="hover-panel">
+                        <div class="hover-actions">
+                            <button type="button" class="hover-btn play-btn-small" th:onclick="'window.location.href=\'/watch/' + ${content.id} + '\''" title="Lecture"><i class="fas fa-play" style="margin-left:2px;"></i></button>
+                            <button type="button" class="hover-btn add-btn-small" title="Ajouter à ma liste" sec:authorize="isAuthenticated()" th:onclick="'toggleWatchlist(' + ${content.id} + '); event.preventDefault();'"><i class="fas fa-plus"></i></button>
+                            <button type="button" class="hover-btn like-btn-small" title="J'aime" th:onclick="'event.preventDefault();'"><i class="fas fa-thumbs-up"></i></button>
+                            <button type="button" class="hover-btn more-btn-small" title="Plus d'infos" style="margin-left: auto;" th:onclick="'window.location.href=\'/catalog/' + ${content.id} + '\''"><i class="fas fa-chevron-down"></i></button>
+                        </div>
+                        <div class="hover-meta">
+                            <span class="age-rating" th:text="${content.ageRating} + '+'">16+</span>
+                            <span class="duration" th:if="${content.type.name() == 'FILM' or content.type.name() == 'DOCUMENTAIRE' or content.type.name() == 'AFRICAIN'}" th:text="${content.durationFormatted}">2 h 14 min</span>
+                            <span class="duration" th:if="${content.type.name() == 'SERIE' or content.type.name() == 'ANIME' or content.type.name() == 'KDRAMA'}">
+                                <th:block th:if="${content.animeMetadata != null}" th:text="${content.animeMetadata.episodeCount} + ' Épisodes'"></th:block>
+                                <th:block th:if="${content.kdramaMetadata != null}" th:text="${content.kdramaMetadata.episodeCount} + ' Épisodes'"></th:block>
+                                <!-- Fallback if no specific metadata -->
+                                <th:block th:if="${content.animeMetadata == null and content.kdramaMetadata == null and content.seasons != null}">
+                                    <span th:text="${content.seasons.size()} + ' Saisons'"></span>
+                                </th:block>
+                            </span>
+                            <span class="hd-badge">HD</span>
+                        </div>
+                        <div class="hover-tags">
+                            <span th:text="${content.genre}">Genre</span>
+                        </div>
+                    </div>
+</a>
+            </div>
+        </div>
+    </section>
+
+    <section class="content-section" th:if="${not #lists.isEmpty(latest)}">
+        <h2 class="section-title"><i class="fas fa-sparkles" style="color: #00ffcc; margin-right: 10px;"></i> <span th:text="#{home.latest}">Nouveautés</span></h2>
+        <div class="content-grid">
+            <div th:each="content : ${latest}" class="content-card">
+                <a th:href="@{/catalog/{id}(id=${content.id})}">
+                    <div class="card-poster">
+                        <img th:src="${content.posterUrl != null ? content.posterUrl : '/images/placeholder.jpg'}"
+                             th:alt="${content.title}" class="poster-img" loading="lazy"/>
+                        <div class="card-overlay"><span class="play-btn"><i class="fas fa-play"></i></span></div>
+                        <span th:if="${content.isPremium}" class="badge-premium"><i class="fas fa-crown" style="font-size: 10px; margin-right: 4px;"></i> PREMIUM</span>
+                    </div>
+                    
+                    <!-- NOUVEAU HOVER PANEL (Style Netflix) -->
+                    <div class="hover-panel">
+                        <div class="hover-actions">
+                            <button type="button" class="hover-btn play-btn-small" th:onclick="'window.location.href=\'/watch/' + ${content.id} + '\''" title="Lecture"><i class="fas fa-play" style="margin-left:2px;"></i></button>
+                            <button type="button" class="hover-btn add-btn-small" title="Ajouter à ma liste" sec:authorize="isAuthenticated()" th:onclick="'toggleWatchlist(' + ${content.id} + '); event.preventDefault();'"><i class="fas fa-plus"></i></button>
+                            <button type="button" class="hover-btn like-btn-small" title="J'aime" th:onclick="'event.preventDefault();'"><i class="fas fa-thumbs-up"></i></button>
+                            <button type="button" class="hover-btn more-btn-small" title="Plus d'infos" style="margin-left: auto;" th:onclick="'window.location.href=\'/catalog/' + ${content.id} + '\''"><i class="fas fa-chevron-down"></i></button>
+                        </div>
+                        <div class="hover-meta">
+                            <span class="age-rating" th:text="${content.ageRating} + '+'">16+</span>
+                            <span class="duration" th:if="${content.type.name() == 'FILM' or content.type.name() == 'DOCUMENTAIRE' or content.type.name() == 'AFRICAIN'}" th:text="${content.durationFormatted}">2 h 14 min</span>
+                            <span class="duration" th:if="${content.type.name() == 'SERIE' or content.type.name() == 'ANIME' or content.type.name() == 'KDRAMA'}">
+                                <th:block th:if="${content.animeMetadata != null}" th:text="${content.animeMetadata.episodeCount} + ' Épisodes'"></th:block>
+                                <th:block th:if="${content.kdramaMetadata != null}" th:text="${content.kdramaMetadata.episodeCount} + ' Épisodes'"></th:block>
+                                <!-- Fallback if no specific metadata -->
+                                <th:block th:if="${content.animeMetadata == null and content.kdramaMetadata == null and content.seasons != null}">
+                                    <span th:text="${content.seasons.size()} + ' Saisons'"></span>
+                                </th:block>
+                            </span>
+                            <span class="hd-badge">HD</span>
+                        </div>
+                        <div class="hover-tags">
+                            <span th:text="${content.genre}">Genre</span>
+                        </div>
+                    </div>
+</a>
+            </div>
+        </div>
+    </section>
+
+    <section class="content-section" th:if="${not #lists.isEmpty(films)}">
+        <h2 class="section-title"><i class="fas fa-film" style="color: var(--accent); margin-right: 10px;"></i> <span th:text="#{home.films}">Films</span></h2>
+        <div class="content-grid">
+            <div th:each="content : ${films}" class="content-card">
+                <a th:href="@{/catalog/{id}(id=${content.id})}">
+                    <div class="card-poster">
+                        <img th:src="${content.posterUrl ?: '/images/placeholder.jpg'}" class="poster-img" loading="lazy"/>
+                        <div class="card-overlay"><span class="play-btn"><i class="fas fa-play"></i></span></div>
+                        <span th:if="${content.isPremium}" class="badge-premium">
+                            <i class="fas fa-crown"></i> PREMIUM
+                        </span>
+                    </div>
+                    
+                    <!-- NOUVEAU HOVER PANEL (Style Netflix) -->
+                    <div class="hover-panel">
+                        <div class="hover-actions">
+                            <button type="button" class="hover-btn play-btn-small" th:onclick="'window.location.href=\'/watch/' + ${content.id} + '\''" title="Lecture"><i class="fas fa-play" style="margin-left:2px;"></i></button>
+                            <button type="button" class="hover-btn add-btn-small" title="Ajouter à ma liste" sec:authorize="isAuthenticated()" th:onclick="'toggleWatchlist(' + ${content.id} + '); event.preventDefault();'"><i class="fas fa-plus"></i></button>
+                            <button type="button" class="hover-btn like-btn-small" title="J'aime" th:onclick="'event.preventDefault();'"><i class="fas fa-thumbs-up"></i></button>
+                            <button type="button" class="hover-btn more-btn-small" title="Plus d'infos" style="margin-left: auto;" th:onclick="'window.location.href=\'/catalog/' + ${content.id} + '\''"><i class="fas fa-chevron-down"></i></button>
+                        </div>
+                        <div class="hover-meta">
+                            <span class="age-rating" th:text="${content.ageRating} + '+'">16+</span>
+                            <span class="duration" th:if="${content.type.name() == 'FILM' or content.type.name() == 'DOCUMENTAIRE' or content.type.name() == 'AFRICAIN'}" th:text="${content.durationFormatted}">2 h 14 min</span>
+                            <span class="duration" th:if="${content.type.name() == 'SERIE' or content.type.name() == 'ANIME' or content.type.name() == 'KDRAMA'}">
+                                <th:block th:if="${content.animeMetadata != null}" th:text="${content.animeMetadata.episodeCount} + ' Épisodes'"></th:block>
+                                <th:block th:if="${content.kdramaMetadata != null}" th:text="${content.kdramaMetadata.episodeCount} + ' Épisodes'"></th:block>
+                                <!-- Fallback if no specific metadata -->
+                                <th:block th:if="${content.animeMetadata == null and content.kdramaMetadata == null and content.seasons != null}">
+                                    <span th:text="${content.seasons.size()} + ' Saisons'"></span>
+                                </th:block>
+                            </span>
+                            <span class="hd-badge">HD</span>
+                        </div>
+                        <div class="hover-tags">
+                            <span th:text="${content.genre}">Genre</span>
+                        </div>
+                    </div>
+</a>
+            </div>
+        </div>
+    </section>
+
+    <section class="content-section" th:if="${not #lists.isEmpty(series)}">
+        <h2 class="section-title"><i class="fas fa-tv" style="color: var(--accent); margin-right: 10px;"></i> <span th:text="#{home.series}">Séries TV</span></h2>
+        <div class="content-grid">
+            <div th:each="content : ${series}" class="content-card">
+                <a th:href="@{/catalog/{id}(id=${content.id})}">
+                    <div class="card-poster">
+                        <img th:src="${content.posterUrl ?: '/images/placeholder.jpg'}" class="poster-img" loading="lazy"/>
+                        <div class="card-overlay"><span class="play-btn"><i class="fas fa-play"></i></span></div>
+                        <span th:if="${content.isPremium}" class="badge-premium">
+                            <i class="fas fa-crown"></i> PREMIUM
+                        </span>
+                    </div>
+                    
+                    <!-- NOUVEAU HOVER PANEL (Style Netflix) -->
+                    <div class="hover-panel">
+                        <div class="hover-actions">
+                            <button type="button" class="hover-btn play-btn-small" th:onclick="'window.location.href=\'/watch/' + ${content.id} + '\''" title="Lecture"><i class="fas fa-play" style="margin-left:2px;"></i></button>
+                            <button type="button" class="hover-btn add-btn-small" title="Ajouter à ma liste" sec:authorize="isAuthenticated()" th:onclick="'toggleWatchlist(' + ${content.id} + '); event.preventDefault();'"><i class="fas fa-plus"></i></button>
+                            <button type="button" class="hover-btn like-btn-small" title="J'aime" th:onclick="'event.preventDefault();'"><i class="fas fa-thumbs-up"></i></button>
+                            <button type="button" class="hover-btn more-btn-small" title="Plus d'infos" style="margin-left: auto;" th:onclick="'window.location.href=\'/catalog/' + ${content.id} + '\''"><i class="fas fa-chevron-down"></i></button>
+                        </div>
+                        <div class="hover-meta">
+                            <span class="age-rating" th:text="${content.ageRating} + '+'">16+</span>
+                            <span class="duration" th:if="${content.type.name() == 'FILM' or content.type.name() == 'DOCUMENTAIRE' or content.type.name() == 'AFRICAIN'}" th:text="${content.durationFormatted}">2 h 14 min</span>
+                            <span class="duration" th:if="${content.type.name() == 'SERIE' or content.type.name() == 'ANIME' or content.type.name() == 'KDRAMA'}">
+                                <th:block th:if="${content.animeMetadata != null}" th:text="${content.animeMetadata.episodeCount} + ' Épisodes'"></th:block>
+                                <th:block th:if="${content.kdramaMetadata != null}" th:text="${content.kdramaMetadata.episodeCount} + ' Épisodes'"></th:block>
+                                <!-- Fallback if no specific metadata -->
+                                <th:block th:if="${content.animeMetadata == null and content.kdramaMetadata == null and content.seasons != null}">
+                                    <span th:text="${content.seasons.size()} + ' Saisons'"></span>
+                                </th:block>
+                            </span>
+                            <span class="hd-badge">HD</span>
+                        </div>
+                        <div class="hover-tags">
+                            <span th:text="${content.genre}">Genre</span>
+                        </div>
+                    </div>
+</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Section Cinéma Africain -->
+    <section class="content-section" th:if="${not #lists.isEmpty(africain)}">
+        <h2 class="section-title"><i class="fas fa-globe-africa" style="color: #E47911; margin-right: 10px;"></i> <span th:text="#{home.african}">Cinéma Africain</span></h2>
+        <div class="content-grid">
+            <div th:each="content : ${africain}" class="content-card">
+                <a th:href="@{/catalog/{id}(id=${content.id})}">
+                    <div class="card-poster">
+                        <img th:src="${content.posterUrl ?: '/images/placeholder.jpg'}" class="poster-img" loading="lazy"/>
+                        <div class="card-overlay"><span class="play-btn"><i class="fas fa-play"></i></span></div>
+                        <span th:if="${content.isPremium}" class="badge-premium">
+                            <i class="fas fa-crown"></i> PREMIUM
+                        </span>
+                        
+                        <!-- Badges Thématiques Africains -->
+                        <div style="position: absolute; top: 10px; left: 10px; display: flex; flex-direction: column; gap: 5px;">
+                            <span th:if="${content.title == 'Juju Stories' or content.title == 'Anikulapo'}" 
+                                  style="background: #800080; color: white; padding: 3px 8px; border-radius: 4px; font-size: 0.65rem; font-weight: 800; text-transform: uppercase;">
+                                <i class="fas fa-hat-wizard" style="margin-right: 4px;"></i> Sorcellerie
+                            </span>
+                            <span th:if="${content.title == 'The Wedding Party'}" 
+                                  style="background: #E47911; color: white; padding: 3px 8px; border-radius: 4px; font-size: 0.65rem; font-weight: 800; text-transform: uppercase;">
+                                <i class="fas fa-clapperboard" style="margin-right: 4px;"></i> Nollywood
+                            </span>
+                            <span th:if="${content.title == 'Iwájú'}" 
+                                  style="background: #00A8E1; color: white; padding: 3px 8px; border-radius: 4px; font-size: 0.65rem; font-weight: 800; text-transform: uppercase;">
+                                <i class="fas fa-robot" style="margin-right: 4px;"></i> Animation
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <!-- NOUVEAU HOVER PANEL (Style Netflix) -->
+                    <div class="hover-panel">
+                        <div class="hover-actions">
+                            <button type="button" class="hover-btn play-btn-small" th:onclick="'window.location.href=\'/watch/' + ${content.id} + '\''" title="Lecture"><i class="fas fa-play" style="margin-left:2px;"></i></button>
+                            <button type="button" class="hover-btn add-btn-small" title="Ajouter à ma liste" sec:authorize="isAuthenticated()" th:onclick="'toggleWatchlist(' + ${content.id} + '); event.preventDefault();'"><i class="fas fa-plus"></i></button>
+                            <button type="button" class="hover-btn like-btn-small" title="J'aime" th:onclick="'event.preventDefault();'"><i class="fas fa-thumbs-up"></i></button>
+                            <button type="button" class="hover-btn more-btn-small" title="Plus d'infos" style="margin-left: auto;" th:onclick="'window.location.href=\'/catalog/' + ${content.id} + '\''"><i class="fas fa-chevron-down"></i></button>
+                        </div>
+                        <div class="hover-meta">
+                            <span class="age-rating" th:text="${content.ageRating} + '+'">16+</span>
+                            <span class="duration" th:if="${content.type.name() == 'FILM' or content.type.name() == 'DOCUMENTAIRE' or content.type.name() == 'AFRICAIN'}" th:text="${content.durationFormatted}">2 h 14 min</span>
+                            <span class="duration" th:if="${content.type.name() == 'SERIE' or content.type.name() == 'ANIME' or content.type.name() == 'KDRAMA'}">
+                                <th:block th:if="${content.animeMetadata != null}" th:text="${content.animeMetadata.episodeCount} + ' Épisodes'"></th:block>
+                                <th:block th:if="${content.kdramaMetadata != null}" th:text="${content.kdramaMetadata.episodeCount} + ' Épisodes'"></th:block>
+                                <!-- Fallback if no specific metadata -->
+                                <th:block th:if="${content.animeMetadata == null and content.kdramaMetadata == null and content.seasons != null}">
+                                    <span th:text="${content.seasons.size()} + ' Saisons'"></span>
+                                </th:block>
+                            </span>
+                            <span class="hd-badge">HD</span>
+                        </div>
+                        <div class="hover-tags">
+                            <span th:text="${content.genre}">Genre</span>
+                        </div>
+                    </div>
+</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Section Anime -->
+    <section class="content-section" th:if="${not #lists.isEmpty(anime)}">
+        <h2 class="section-title"><i class="fas fa-dragon" style="color: #ff9900; margin-right: 10px;"></i> <span th:text="#{home.anime}">Animation Japonaise</span></h2>
+        <div class="content-grid">
+            <div th:each="content : ${anime}" class="content-card">
+                <a th:href="@{/catalog/{id}(id=${content.id})}">
+                    <div class="card-poster">
+                        <img th:src="${content.posterUrl ?: '/images/placeholder.jpg'}" class="poster-img" loading="lazy"/>
+                        <div class="card-overlay"><span class="play-btn"><i class="fas fa-play"></i></span></div>
+                    </div>
+                    
+                    <!-- NOUVEAU HOVER PANEL (Style Netflix) -->
+                    <div class="hover-panel">
+                        <div class="hover-actions">
+                            <button type="button" class="hover-btn play-btn-small" th:onclick="'window.location.href=\'/watch/' + ${content.id} + '\''" title="Lecture"><i class="fas fa-play" style="margin-left:2px;"></i></button>
+                            <button type="button" class="hover-btn add-btn-small" title="Ajouter à ma liste" sec:authorize="isAuthenticated()" th:onclick="'toggleWatchlist(' + ${content.id} + '); event.preventDefault();'"><i class="fas fa-plus"></i></button>
+                            <button type="button" class="hover-btn like-btn-small" title="J'aime" th:onclick="'event.preventDefault();'"><i class="fas fa-thumbs-up"></i></button>
+                            <button type="button" class="hover-btn more-btn-small" title="Plus d'infos" style="margin-left: auto;" th:onclick="'window.location.href=\'/catalog/' + ${content.id} + '\''"><i class="fas fa-chevron-down"></i></button>
+                        </div>
+                        <div class="hover-meta">
+                            <span class="age-rating" th:text="${content.ageRating} + '+'">16+</span>
+                            <span class="duration" th:if="${content.type.name() == 'FILM' or content.type.name() == 'DOCUMENTAIRE' or content.type.name() == 'AFRICAIN'}" th:text="${content.durationFormatted}">2 h 14 min</span>
+                            <span class="duration" th:if="${content.type.name() == 'SERIE' or content.type.name() == 'ANIME' or content.type.name() == 'KDRAMA'}">
+                                <th:block th:if="${content.animeMetadata != null}" th:text="${content.animeMetadata.episodeCount} + ' Épisodes'"></th:block>
+                                <th:block th:if="${content.kdramaMetadata != null}" th:text="${content.kdramaMetadata.episodeCount} + ' Épisodes'"></th:block>
+                                <!-- Fallback if no specific metadata -->
+                                <th:block th:if="${content.animeMetadata == null and content.kdramaMetadata == null and content.seasons != null}">
+                                    <span th:text="${content.seasons.size()} + ' Saisons'"></span>
+                                </th:block>
+                            </span>
+                            <span class="hd-badge">HD</span>
+                        </div>
+                        <div class="hover-tags">
+                            <span th:text="${content.genre}">Genre</span>
+                        </div>
+                    </div>
+</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Section K-Drama -->
+    <section class="content-section" th:if="${not #lists.isEmpty(kdrama)}">
+        <h2 class="section-title"><i class="fas fa-heart" style="color: #ff3399; margin-right: 10px;"></i> <span th:text="#{home.kdrama}">K-Dramas</span></h2>
+        <div class="content-grid">
+            <div th:each="content : ${kdrama}" class="content-card">
+                <a th:href="@{/catalog/{id}(id=${content.id})}">
+                    <div class="card-poster">
+                        <img th:src="${content.posterUrl ?: '/images/placeholder.jpg'}" class="poster-img" loading="lazy"/>
+                        <div class="card-overlay"><span class="play-btn"><i class="fas fa-play"></i></span></div>
+                    </div>
+                    
+                    <!-- NOUVEAU HOVER PANEL (Style Netflix) -->
+                    <div class="hover-panel">
+                        <div class="hover-actions">
+                            <button type="button" class="hover-btn play-btn-small" th:onclick="'window.location.href=\'/watch/' + ${content.id} + '\''" title="Lecture"><i class="fas fa-play" style="margin-left:2px;"></i></button>
+                            <button type="button" class="hover-btn add-btn-small" title="Ajouter à ma liste" sec:authorize="isAuthenticated()" th:onclick="'toggleWatchlist(' + ${content.id} + '); event.preventDefault();'"><i class="fas fa-plus"></i></button>
+                            <button type="button" class="hover-btn like-btn-small" title="J'aime" th:onclick="'event.preventDefault();'"><i class="fas fa-thumbs-up"></i></button>
+                            <button type="button" class="hover-btn more-btn-small" title="Plus d'infos" style="margin-left: auto;" th:onclick="'window.location.href=\'/catalog/' + ${content.id} + '\''"><i class="fas fa-chevron-down"></i></button>
+                        </div>
+                        <div class="hover-meta">
+                            <span class="age-rating" th:text="${content.ageRating} + '+'">16+</span>
+                            <span class="duration" th:if="${content.type.name() == 'FILM' or content.type.name() == 'DOCUMENTAIRE' or content.type.name() == 'AFRICAIN'}" th:text="${content.durationFormatted}">2 h 14 min</span>
+                            <span class="duration" th:if="${content.type.name() == 'SERIE' or content.type.name() == 'ANIME' or content.type.name() == 'KDRAMA'}">
+                                <th:block th:if="${content.animeMetadata != null}" th:text="${content.animeMetadata.episodeCount} + ' Épisodes'"></th:block>
+                                <th:block th:if="${content.kdramaMetadata != null}" th:text="${content.kdramaMetadata.episodeCount} + ' Épisodes'"></th:block>
+                                <!-- Fallback if no specific metadata -->
+                                <th:block th:if="${content.animeMetadata == null and content.kdramaMetadata == null and content.seasons != null}">
+                                    <span th:text="${content.seasons.size()} + ' Saisons'"></span>
+                                </th:block>
+                            </span>
+                            <span class="hd-badge">HD</span>
+                        </div>
+                        <div class="hover-tags">
+                            <span th:text="${content.genre}">Genre</span>
+                        </div>
+                    </div>
+</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Section LIVE -->
+    <section class="content-section" th:if="${not #lists.isEmpty(live)}">
+        <h2 class="section-title">
+            <i class="fas fa-broadcast-tower" style="color: #ff0000; margin-right: 10px;"></i> 
+            <span th:text="#{home.live}">En Direct</span>
+        </h2>
+        <div class="content-grid">
+            <div th:each="content : ${live}" class="content-card">
+                <a th:href="@{/catalog/{id}(id=${content.id})}">
+                    <div class="card-poster">
+                        <img th:src="${content.posterUrl ?: '/images/placeholder.jpg'}" class="poster-img" loading="lazy"/>
+                        <div class="card-overlay">
+                            <span class="play-btn"><i class="fas fa-tower-broadcast"></i></span>
+                        </div>
+                        
+                        <!-- Badge LIVE Pulsant -->
+                        <div style="position: absolute; top: 10px; right: 10px; background: rgba(255, 0, 0, 0.8); color: white; padding: 4px 10px; border-radius: 4px; font-size: 0.7rem; font-weight: 800; display: flex; align-items: center; gap: 6px; backdrop-filter: blur(4px);">
+                            <div class="pulse-dot"></div> EN DIRECT
+                        </div>
+
+                        <span th:if="${content.isPremium}" class="badge-premium">
+                            <i class="fas fa-crown"></i> PREMIUM
+                        </span>
+                    </div>
+                    
+                    <!-- NOUVEAU HOVER PANEL (Style Netflix) -->
+                    <div class="hover-panel">
+                        <div class="hover-actions">
+                            <button type="button" class="hover-btn play-btn-small" th:onclick="'window.location.href=\'/watch/' + ${content.id} + '\''" title="Lecture"><i class="fas fa-play" style="margin-left:2px;"></i></button>
+                            <button type="button" class="hover-btn add-btn-small" title="Ajouter à ma liste" sec:authorize="isAuthenticated()" th:onclick="'toggleWatchlist(' + ${content.id} + '); event.preventDefault();'"><i class="fas fa-plus"></i></button>
+                            <button type="button" class="hover-btn like-btn-small" title="J'aime" th:onclick="'event.preventDefault();'"><i class="fas fa-thumbs-up"></i></button>
+                            <button type="button" class="hover-btn more-btn-small" title="Plus d'infos" style="margin-left: auto;" th:onclick="'window.location.href=\'/catalog/' + ${content.id} + '\''"><i class="fas fa-chevron-down"></i></button>
+                        </div>
+                        <div class="hover-meta">
+                            <span class="age-rating" th:text="${content.ageRating} + '+'">16+</span>
+                            <span class="duration" th:if="${content.type.name() == 'FILM' or content.type.name() == 'DOCUMENTAIRE' or content.type.name() == 'AFRICAIN'}" th:text="${content.durationFormatted}">2 h 14 min</span>
+                            <span class="duration" th:if="${content.type.name() == 'SERIE' or content.type.name() == 'ANIME' or content.type.name() == 'KDRAMA'}">
+                                <th:block th:if="${content.animeMetadata != null}" th:text="${content.animeMetadata.episodeCount} + ' Épisodes'"></th:block>
+                                <th:block th:if="${content.kdramaMetadata != null}" th:text="${content.kdramaMetadata.episodeCount} + ' Épisodes'"></th:block>
+                                <!-- Fallback if no specific metadata -->
+                                <th:block th:if="${content.animeMetadata == null and content.kdramaMetadata == null and content.seasons != null}">
+                                    <span th:text="${content.seasons.size()} + ' Saisons'"></span>
+                                </th:block>
+                            </span>
+                            <span class="hd-badge">HD</span>
+                        </div>
+                        <div class="hover-tags">
+                            <span th:text="${content.genre}">Genre</span>
+                        </div>
+                    </div>
+</a>
+            </div>
+        </div>
+    </section>
+
+    <style>
+        .pulse-dot {
+            width: 8px;
+            height: 8px;
+            background: white;
+            border-radius: 50%;
+            box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7);
+            animation: pulse-white 2s infinite;
+        }
+
+        @keyframes pulse-white {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(255, 255, 255, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 255, 255, 0); }
+        }
+    </style>
+
+    <div th:if="${#lists.isEmpty(trending) and #lists.isEmpty(latest) and #lists.isEmpty(live)}" class="empty-state">
+        <p><i class="fas fa-clapperboard" style="font-size: 3rem; margin-bottom: 20px; opacity: 0.3;"></i></p>
+        <p th:text="#{home.empty}">Le catalogue est vide pour le moment.</p>
+        <p sec:authorize="hasRole('ADMIN')">
+            <a th:href="@{/admin/content/new}" class="btn-primary">Add Content</a>
+        </p>
+    </div>
+
+</main>
+
+<div th:replace="~{layout :: footer}"></div>
+<script th:src="@{/js/main.js}"></script>
+</body>
+</html>
+>>>>>>> f85e8d9 (Projet PrimeVideo complet)

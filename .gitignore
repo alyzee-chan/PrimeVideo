@@ -1,0 +1,29 @@
+target/
+!.mvn/wrapper/maven-wrapper.jar
+/bin/
+/build/
+
+### IntelliJ IDEA ###
+.idea/
+*.iws
+*.iml
+*.ipr
+
+### VS Code ###
+.vscode/
+
+### Media and Large Files ###
+*.mp4
+*.mkv
+*.avi
+*.zip
+*.rar
+*.7z
+BD-Prime/
+Afrique/
+
+### OS Files ###
+System Volume Information/
+$RECYCLE.BIN/
+Thumbs.db
+Desktop.ini
